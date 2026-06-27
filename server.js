@@ -37,9 +37,10 @@ const generateToken = (user, account_type) =>
   Buffer.from(JSON.stringify({
     id:           user.id,
     role:         user.role || 'student',
-    account_type, // 'staff' or 'student'
+    account_type,
     email:        user.email || null,
-    exp:          Date.now() + 86400000  // 24 h
+    student_id:   user.student_id || null,
+    exp:          Date.now() + 86400000
   })).toString('base64');
 
 // ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
@@ -175,7 +176,8 @@ app.post('/auth/login', async (req, res) => {
 app.post('/auth/register/student', async (req, res) => {
   const {
     full_name, email, password, role,
-    grade, class: className, student_name, courses
+    grade, class: className, student_name, courses,
+    parent_name, parent_email, parent_phone
   } = req.body;
 
   if (!full_name || !email || !password || !role)
@@ -186,18 +188,49 @@ app.post('/auth/register/student', async (req, res) => {
   try {
     const hashed = hashPassword(password);
 
-    // Auto-link: find matching student record
+    // ── SMART AUTO-LINK ──────────────────────────────────────────
+    // The name to search for:
+    //   student → their own full_name
+    //   parent  → their child's name (student_name field)
     let student_id = null;
-    const searchName = role === 'student' ? full_name : (student_name || '');
-    if (searchName && className) {
-      const match = await pool.query(
-        `SELECT id FROM students
-         WHERE LOWER(full_name) ILIKE LOWER($1) AND class ILIKE $2
-         LIMIT 1`,
-        [`%${searchName}%`, className]
-      );
-      if (match.rows.length) student_id = match.rows[0].id;
+    const searchName = (role === 'student' ? full_name : student_name || '').trim();
+
+    if (searchName) {
+      // Step 1: try exact name + class match (best case)
+      if (className) {
+        const exact = await pool.query(
+          `SELECT id FROM students
+           WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($1))
+             AND LOWER(TRIM(class)) = LOWER(TRIM($2))
+           LIMIT 1`,
+          [searchName, className]
+        );
+        if (exact.rows.length) student_id = exact.rows[0].id;
+      }
+
+      // Step 2: if no exact match, try name only (ignore class)
+      if (!student_id) {
+        const byName = await pool.query(
+          `SELECT id FROM students
+           WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($1))
+           LIMIT 1`,
+          [searchName]
+        );
+        if (byName.rows.length) student_id = byName.rows[0].id;
+      }
+
+      // Step 3: fuzzy match — name contains searchName (catches typos/partial)
+      if (!student_id) {
+        const fuzzy = await pool.query(
+          `SELECT id, full_name FROM students
+           WHERE LOWER(full_name) ILIKE LOWER($1)
+           LIMIT 1`,
+          [`%${searchName}%`]
+        );
+        if (fuzzy.rows.length) student_id = fuzzy.rows[0].id;
+      }
     }
+    // ─────────────────────────────────────────────────────────────
 
     const { rows } = await pool.query(
       `INSERT INTO student_accounts
@@ -209,12 +242,24 @@ app.post('/auth/register/student', async (req, res) => {
         email.trim().toLowerCase(),
         hashed,
         role,
-        grade        || null,
-        className    || null,
+        grade      || null,
+        className  || null,
         student_id,
-        courses      || null
+        courses    || null
       ]
     );
+
+    // Also update the student record with parent info if provided
+    if (student_id && role === 'student' && (parent_name || parent_email || parent_phone)) {
+      await pool.query(
+        `UPDATE students SET
+           parent_name  = COALESCE($1, parent_name),
+           parent_email = COALESCE($2, parent_email),
+           parent_phone = COALESCE($3, parent_phone)
+         WHERE id = $4`,
+        [parent_name||null, parent_email||null, parent_phone||null, student_id]
+      );
+    }
 
     const u = rows[0];
     res.status(201).json({
@@ -228,7 +273,12 @@ app.post('/auth/register/student', async (req, res) => {
         grade:        u.grade,
         class:        u.class,
         student_id:   u.student_id
-      }
+      },
+      // Tell the frontend whether auto-link worked
+      linked: !!student_id,
+      message: student_id
+        ? 'Account created and linked successfully!'
+        : 'Account created. Please ask your admin to link your account.'
     });
   } catch (err) {
     if (err.code === '23505')
