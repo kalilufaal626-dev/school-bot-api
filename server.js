@@ -897,13 +897,35 @@ app.get('/announcements', verifyAny, async (req, res) => {
 app.post('/announcements', verifyToken, isAdmin, async (req, res) => {
   const { title, message, target } = req.body;
   if (!message) return res.status(400).json({ error: 'message required' });
+
   try {
+    // 1. Save announcement to DB
     const { rows } = await pool.query(
       `INSERT INTO announcements (title, message, target) VALUES ($1,$2,$3) RETURNING *`,
       [title||null, message, target||'all']
     );
-    res.status(201).json(rows[0]);
-  } catch (err) { res.status(500).json({ error: 'Failed to post announcement' }); }
+    const announcement = rows[0];
+
+    // 2. Respond to dashboard immediately (don't make admin wait)
+    res.status(201).json(announcement);
+
+    // 3. Fire-and-forget: notify n8n to broadcast to all WhatsApp subscribers
+    if (process.env.N8N_ANNOUNCEMENT_WEBHOOK) {
+      fetch(process.env.N8N_ANNOUNCEMENT_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title:   title   || 'School Announcement',
+          message: message,
+          sent_at: new Date().toISOString()
+        })
+      }).catch(err => console.error('n8n webhook failed:', err));
+    }
+
+  } catch (err) {
+    console.error('Post announcement error:', err);
+    res.status(500).json({ error: 'Failed to post announcement' });
+  }
 });
 
 app.delete('/announcements/:id', verifyToken, isAdmin, async (req, res) => {
