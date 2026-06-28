@@ -166,72 +166,123 @@ app.post('/auth/login', async (req, res) => {
 
 /**
  * POST /auth/register/student
- * Public route — student or parent creates their own account.
- * Body: { full_name, email, password, role ('student'|'parent'),
- *         grade, class, student_name (for parent linking) }
- *
- * For 'student': tries to auto-link to students table by full_name + class match.
- * For 'parent':  tries to auto-link to students table by student_name + class match.
+ * 
+ * STUDENT: Creates a student record in `students` table (if not exists)
+ *          AND creates a login account in `student_accounts` — fully linked.
+ * 
+ * PARENT:  Creates a login account linked to their child's student record
+ *          by matching child name + class.
  */
 app.post('/auth/register/student', async (req, res) => {
   const {
     full_name, email, password, role,
-    grade, class: className, student_name, courses,
-    parent_name, parent_email, parent_phone
+    grade, class: className,
+    parent_name, parent_email, parent_phone,
+    gender, date_of_birth, courses,
+    student_name  // parent provides child's name
   } = req.body;
 
   if (!full_name || !email || !password || !role)
     return res.status(400).json({ error: 'full_name, email, password, and role are required' });
   if (!['student', 'parent'].includes(role))
     return res.status(400).json({ error: 'role must be "student" or "parent"' });
+  if (!className)
+    return res.status(400).json({ error: 'class is required' });
 
   try {
     const hashed = hashPassword(password);
-
-    // ── SMART AUTO-LINK ──────────────────────────────────────────
-    // The name to search for:
-    //   student → their own full_name
-    //   parent  → their child's name (student_name field)
     let student_id = null;
-    const searchName = (role === 'student' ? full_name : student_name || '').trim();
 
-    if (searchName) {
-      // Step 1: try exact name + class match (best case)
-      if (className) {
-        const exact = await pool.query(
-          `SELECT id FROM students
-           WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($1))
-             AND LOWER(TRIM(class)) = LOWER(TRIM($2))
-           LIMIT 1`,
-          [searchName, className]
+    if (role === 'student') {
+      // ── STUDENT: find or CREATE student record ──────────────────
+
+      // Step 1: try exact name + class match
+      const exact = await pool.query(
+        `SELECT id FROM students
+         WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($1))
+           AND LOWER(TRIM(class)) = LOWER(TRIM($2))
+         LIMIT 1`,
+        [full_name, className]
+      );
+
+      if (exact.rows.length) {
+        // Found existing record — link to it
+        student_id = exact.rows[0].id;
+
+        // Update parent info if provided
+        if (parent_name || parent_email || parent_phone) {
+          await pool.query(
+            `UPDATE students SET
+               parent_name  = COALESCE($1, parent_name),
+               parent_email = COALESCE($2, parent_email),
+               parent_phone = COALESCE($3, parent_phone)
+             WHERE id = $4`,
+            [parent_name||null, parent_email||null, parent_phone||null, student_id]
+          );
+        }
+      } else {
+        // No existing record — CREATE a new student record automatically
+        const newStudent = await pool.query(
+          `INSERT INTO students
+             (full_name, class, grade, gender, date_of_birth,
+              parent_name, parent_email, parent_phone, status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'active')
+           RETURNING id`,
+          [
+            full_name,
+            className,
+            grade        || null,
+            gender       || null,
+            date_of_birth|| null,
+            parent_name  || null,
+            parent_email || null,
+            parent_phone || null
+          ]
         );
-        if (exact.rows.length) student_id = exact.rows[0].id;
+        student_id = newStudent.rows[0].id;
       }
 
-      // Step 2: if no exact match, try name only (ignore class)
+    } else if (role === 'parent') {
+      // ── PARENT: find child's student record ────────────────────
+      const childName = (student_name || '').trim();
+      if (!childName)
+        return res.status(400).json({ error: 'student_name (your child\'s name) is required for parents' });
+
+      // Try exact match first
+      const exact = await pool.query(
+        `SELECT id FROM students
+         WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($1))
+           AND LOWER(TRIM(class)) = LOWER(TRIM($2))
+         LIMIT 1`,
+        [childName, className]
+      );
+      if (exact.rows.length) student_id = exact.rows[0].id;
+
+      // Try name only
       if (!student_id) {
         const byName = await pool.query(
           `SELECT id FROM students
            WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($1))
            LIMIT 1`,
-          [searchName]
+          [childName]
         );
         if (byName.rows.length) student_id = byName.rows[0].id;
       }
 
-      // Step 3: fuzzy match — name contains searchName (catches typos/partial)
-      if (!student_id) {
-        const fuzzy = await pool.query(
-          `SELECT id, full_name FROM students
-           WHERE LOWER(full_name) ILIKE LOWER($1)
-           LIMIT 1`,
-          [`%${searchName}%`]
+      // Update parent info on student record
+      if (student_id) {
+        await pool.query(
+          `UPDATE students SET
+             parent_name  = COALESCE($1, parent_name),
+             parent_email = COALESCE($2, parent_email),
+             parent_phone = COALESCE($3, parent_phone)
+           WHERE id = $4`,
+          [full_name, email, parent_phone||null, student_id]
         );
-        if (fuzzy.rows.length) student_id = fuzzy.rows[0].id;
       }
     }
-    // ─────────────────────────────────────────────────────────────
 
+    // ── Create login account ──────────────────────────────────────
     const { rows } = await pool.query(
       `INSERT INTO student_accounts
          (full_name, email, password, role, grade, class, student_id, courses)
@@ -242,24 +293,12 @@ app.post('/auth/register/student', async (req, res) => {
         email.trim().toLowerCase(),
         hashed,
         role,
-        grade      || null,
-        className  || null,
+        grade     || null,
+        className || null,
         student_id,
-        courses    || null
+        courses   || null
       ]
     );
-
-    // Also update the student record with parent info if provided
-    if (student_id && role === 'student' && (parent_name || parent_email || parent_phone)) {
-      await pool.query(
-        `UPDATE students SET
-           parent_name  = COALESCE($1, parent_name),
-           parent_email = COALESCE($2, parent_email),
-           parent_phone = COALESCE($3, parent_phone)
-         WHERE id = $4`,
-        [parent_name||null, parent_email||null, parent_phone||null, student_id]
-      );
-    }
 
     const u = rows[0];
     res.status(201).json({
@@ -274,12 +313,12 @@ app.post('/auth/register/student', async (req, res) => {
         class:        u.class,
         student_id:   u.student_id
       },
-      // Tell the frontend whether auto-link worked
       linked: !!student_id,
       message: student_id
-        ? 'Account created and linked successfully!'
-        : 'Account created. Please ask your admin to link your account.'
+        ? 'Account created successfully! You can now view your details.'
+        : 'Account created. Contact your admin to complete setup.'
     });
+
   } catch (err) {
     if (err.code === '23505')
       return res.status(409).json({ error: 'An account with this email already exists' });
