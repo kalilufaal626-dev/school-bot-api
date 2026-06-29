@@ -189,6 +189,9 @@ app.post('/auth/register/student', async (req, res) => {
   if (!className)
     return res.status(400).json({ error: 'class is required' });
 
+  // Normalize the class name to standard format
+  const normalizedClass = normalizeClass(className);
+
   try {
     const hashed = hashPassword(password);
     let student_id = null;
@@ -230,7 +233,7 @@ app.post('/auth/register/student', async (req, res) => {
            RETURNING id`,
           [
             full_name,
-            className,
+            normalizedClass,
             grade        || null,
             gender       || null,
             date_of_birth|| null,
@@ -408,6 +411,48 @@ app.delete('/teachers/:id', verifyToken, isAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Failed to delete teacher' }); }
 });
 
+// ── TEACHER CLASSES (multi-class assignments) ─────────────────────────────────
+
+// GET classes assigned to a teacher
+app.get('/teachers/:id/classes', verifyToken, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM teacher_classes WHERE teacher_id = $1 ORDER BY class_name',
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: 'Failed to fetch teacher classes' }); }
+});
+
+// POST assign a class to a teacher
+app.post('/teachers/:id/classes', verifyToken, isAdmin, async (req, res) => {
+  const { class_name } = req.body;
+  if (!class_name) return res.status(400).json({ error: 'class_name is required' });
+
+  const normalized = normalizeClass(class_name);
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO teacher_classes (teacher_id, class_name)
+       VALUES ($1, $2)
+       ON CONFLICT (teacher_id, class_name) DO NOTHING
+       RETURNING *`,
+      [req.params.id, normalized]
+    );
+    res.status(201).json({ class_name: normalized, teacher_id: parseInt(req.params.id) });
+  } catch (err) { res.status(500).json({ error: 'Failed to assign class' }); }
+});
+
+// DELETE remove a class from a teacher
+app.delete('/teachers/:id/classes/:class_name', verifyToken, isAdmin, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM teacher_classes WHERE teacher_id = $1 AND LOWER(class_name) = LOWER($2)',
+      [req.params.id, decodeURIComponent(req.params.class_name)]
+    );
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Failed to remove class' }); }
+});
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  STUDENT ACCOUNTS  (admin can list/manage; public register is above)
@@ -457,6 +502,54 @@ app.delete('/student-accounts/:id', verifyToken, isAdmin, async (req, res) => {
 //  STUDENTS  (the school record — separate from login accounts)
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ── CLASS NAME NORMALIZER ─────────────────────────────────────────────────────
+// Accepts any variation student types and returns standard format
+// Examples:
+//   "grade9commerce1"    → "Grade 9 Commerce 1"
+//   "Grade9Commerce1"    → "Grade 9 Commerce 1"
+//   "grade 9 commerce1"  → "Grade 9 Commerce 1"
+//   "9 Science 2"        → "Grade 9 Science 2"
+//   "grade 7"            → "Grade 7"
+function normalizeClass(raw) {
+  if (!raw) return null;
+  let s = raw.trim();
+
+  // Insert space before capital letters (CamelCase → words)
+  s = s.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+  // Insert space between letters and digits
+  s = s.replace(/([a-zA-Z])(\d)/g, '$1 $2');
+  s = s.replace(/(\d)([a-zA-Z])/g, '$1 $2');
+
+  // Normalize multiple spaces
+  s = s.replace(/\s+/g, ' ').trim().toLowerCase();
+
+  // Extract parts: grade number, stream, class number
+  const gradeMatch  = s.match(/(?:grade\s*)?(\d+)/);
+  const streamMatch = s.match(/\b(commerce|science|arts)\b/i);
+  const classMatch  = s.match(/(?:commerce|science|arts)\s*(\d+)/i);
+
+  if (!gradeMatch) return raw; // can't parse, return as-is
+
+  const gradeNum  = gradeMatch[1];
+  const stream    = streamMatch
+    ? streamMatch[1].charAt(0).toUpperCase() + streamMatch[1].slice(1).toLowerCase()
+    : null;
+  const classNum  = classMatch ? classMatch[1] : null;
+
+  if (stream && classNum) {
+    return `Grade ${gradeNum} ${stream} ${classNum}`;
+  } else if (stream) {
+    return `Grade ${gradeNum} ${stream}`;
+  } else {
+    return `Grade ${gradeNum}`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  STUDENTS  (the school record — separate from login accounts)
+// ══════════════════════════════════════════════════════════════════════════════
+
 app.get('/students', verifyToken, async (req, res) => {
   try {
     let query = 'SELECT * FROM students WHERE 1=1';
@@ -464,12 +557,11 @@ app.get('/students', verifyToken, async (req, res) => {
 
     // STUDENT: can only see their own record
     if (req.user.role === 'student') {
-      if (!req.user.student_id)
-        return res.json([]); // not linked yet
+      if (!req.user.student_id) return res.json([]);
       params.push(req.user.student_id);
       query += ` AND id = $${params.length}`;
 
-    // PARENT: see children linked to their account
+    // PARENT: see their child only
     } else if (req.user.role === 'parent') {
       const linked = await pool.query(
         'SELECT student_id FROM student_accounts WHERE id = $1', [req.user.id]
@@ -479,17 +571,36 @@ app.get('/students', verifyToken, async (req, res) => {
       params.push(sid);
       query += ` AND id = $${params.length}`;
 
-    // TEACHER: see only their class (ILIKE for case-insensitive)
+    // TEACHER: see students in ALL their assigned classes
     } else if (req.user.role === 'teacher') {
-      const tr = await pool.query('SELECT class FROM teachers WHERE id = $1', [req.user.id]);
-      const cls = tr.rows[0]?.class;
-      if (cls) {
-        params.push(cls);
-        query += ` AND class ILIKE $${params.length}`;
+
+      // Get all classes assigned to this teacher from teacher_classes table
+      const tcRows = await pool.query(
+        'SELECT class_name FROM teacher_classes WHERE teacher_id = $1',
+        [req.user.id]
+      );
+
+      if (tcRows.rows.length > 0) {
+        // Build: class ILIKE $1 OR class ILIKE $2 OR ...
+        const conditions = tcRows.rows.map((_, i) => {
+          params.push(tcRows.rows[i].class_name);
+          return `LOWER(class) = LOWER($${params.length})`;
+        });
+        query += ` AND (${conditions.join(' OR ')})`;
+      } else {
+        // Fallback: check old single class field on teachers table
+        const tr = await pool.query(
+          'SELECT class FROM teachers WHERE id = $1', [req.user.id]
+        );
+        const cls = tr.rows[0]?.class;
+        if (cls) {
+          params.push(cls);
+          query += ` AND class ILIKE $${params.length}`;
+        }
+        // no class set → see all students (so teacher never locked out)
       }
-      // no class set → see all (so teacher is never locked out)
     }
-    // admin / principal → no filter, see all
+    // admin / principal → no filter
 
     if (req.query.class && !['student','parent'].includes(req.user.role)) {
       params.push(req.query.class);
@@ -500,7 +611,7 @@ app.get('/students', verifyToken, async (req, res) => {
       query += ` AND status = $${params.length}`;
     }
 
-    query += ' ORDER BY full_name ASC';
+    query += ' ORDER BY class ASC, full_name ASC';
     const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (err) {
