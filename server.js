@@ -546,6 +546,30 @@ function normalizeClass(raw) {
   }
 }
 
+// ── AUDIT LOG HELPER ──────────────────────────────────────────────────────────
+async function auditLog({ action, entity, entity_id, actor, old_value, new_value, description }) {
+  try {
+    await pool.query(
+      `INSERT INTO audit_logs
+         (action, entity, entity_id, actor_id, actor_name, actor_role, old_value, new_value, description)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [
+        action,
+        entity,
+        entity_id || null,
+        actor?.id || null,
+        actor?.full_name || actor?.name || actor?.email || null,
+        actor?.role || null,
+        old_value   ? JSON.stringify(old_value)  : null,
+        new_value   ? JSON.stringify(new_value)  : null,
+        description || null
+      ]
+    );
+  } catch(e) {
+    console.error('Audit log error:', e.message);
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  STUDENTS  (the school record — separate from login accounts)
 // ══════════════════════════════════════════════════════════════════════════════
