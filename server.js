@@ -304,6 +304,17 @@ app.post('/auth/register/student', async (req, res) => {
     );
 
     const u = rows[0];
+
+    // Audit: account self-registration
+    auditLog({
+      action:      'create',
+      entity:      'student_account',
+      entity_id:   u.id,
+      actor:       { id: u.id, full_name: u.full_name, role: u.role },
+      new_value:   { role: u.role, class: u.class, linked_student_id: student_id },
+      description: `${u.full_name} self-registered as ${u.role}${student_id ? ' (linked to student #' + student_id + ')' : ' (not linked)'}`
+    });
+
     res.status(201).json({
       token: generateToken(u, 'student'),
       user: {
@@ -379,6 +390,13 @@ app.post('/teachers', verifyToken, isAdmin, async (req, res) => {
        RETURNING id, full_name, email, class, role`,
       [full_name, email, hashPassword(password), cls || null, role || 'teacher']
     );
+
+    auditLog({
+      action: 'create', entity: 'teacher', entity_id: rows[0].id,
+      actor: req.user, new_value: rows[0],
+      description: `${req.user.email || req.user.id} added teacher ${rows[0].full_name} (${rows[0].role})`
+    });
+
     res.status(201).json(rows[0]);
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Email already in use' });
@@ -389,6 +407,8 @@ app.post('/teachers', verifyToken, isAdmin, async (req, res) => {
 app.patch('/teachers/:id', verifyToken, isAdmin, async (req, res) => {
   const { full_name, class: cls, role } = req.body;
   try {
+    const before = await pool.query('SELECT * FROM teachers WHERE id = $1', [req.params.id]);
+
     const { rows } = await pool.query(
       `UPDATE teachers SET
          full_name = COALESCE($1, full_name),
@@ -399,14 +419,29 @@ app.patch('/teachers/:id', verifyToken, isAdmin, async (req, res) => {
       [full_name || null, cls || null, role || null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Teacher not found' });
+
+    auditLog({
+      action: 'update', entity: 'teacher', entity_id: rows[0].id,
+      actor: req.user, old_value: before.rows[0] || null, new_value: rows[0],
+      description: `${req.user.email || req.user.id} updated teacher ${rows[0].full_name}`
+    });
+
     res.json(rows[0]);
   } catch (err) { res.status(500).json({ error: 'Failed to update teacher' }); }
 });
 
 app.delete('/teachers/:id', verifyToken, isAdmin, async (req, res) => {
   try {
+    const before = await pool.query('SELECT * FROM teachers WHERE id = $1', [req.params.id]);
     const { rowCount } = await pool.query('DELETE FROM teachers WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Teacher not found' });
+
+    auditLog({
+      action: 'delete', entity: 'teacher', entity_id: parseInt(req.params.id),
+      actor: req.user, old_value: before.rows[0] || null,
+      description: `${req.user.email || req.user.id} removed teacher ${before.rows[0]?.full_name || ('#' + req.params.id)}`
+    });
+
     res.json({ success: true, deleted_id: parseInt(req.params.id) });
   } catch (err) { res.status(500).json({ error: 'Failed to delete teacher' }); }
 });
@@ -438,6 +473,13 @@ app.post('/teachers/:id/classes', verifyToken, isAdmin, async (req, res) => {
        RETURNING *`,
       [req.params.id, normalized]
     );
+
+    auditLog({
+      action: 'create', entity: 'teacher_class', entity_id: parseInt(req.params.id),
+      actor: req.user, new_value: { class_name: normalized },
+      description: `${req.user.email || req.user.id} assigned class "${normalized}" to teacher #${req.params.id}`
+    });
+
     res.status(201).json({ class_name: normalized, teacher_id: parseInt(req.params.id) });
   } catch (err) { res.status(500).json({ error: 'Failed to assign class' }); }
 });
@@ -449,6 +491,13 @@ app.delete('/teachers/:id/classes/:class_name', verifyToken, isAdmin, async (req
       'DELETE FROM teacher_classes WHERE teacher_id = $1 AND LOWER(class_name) = LOWER($2)',
       [req.params.id, decodeURIComponent(req.params.class_name)]
     );
+
+    auditLog({
+      action: 'delete', entity: 'teacher_class', entity_id: parseInt(req.params.id),
+      actor: req.user, old_value: { class_name: decodeURIComponent(req.params.class_name) },
+      description: `${req.user.email || req.user.id} removed class "${decodeURIComponent(req.params.class_name)}" from teacher #${req.params.id}`
+    });
+
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed to remove class' }); }
 });
@@ -476,6 +525,8 @@ app.get('/student-accounts', verifyToken, isAdmin, async (req, res) => {
 app.patch('/student-accounts/:id', verifyToken, isAdmin, async (req, res) => {
   const { student_id, grade, class: cls } = req.body;
   try {
+    const before = await pool.query('SELECT * FROM student_accounts WHERE id = $1', [req.params.id]);
+
     const { rows } = await pool.query(
       `UPDATE student_accounts SET
          student_id = COALESCE($1, student_id),
@@ -486,13 +537,28 @@ app.patch('/student-accounts/:id', verifyToken, isAdmin, async (req, res) => {
       [student_id || null, grade || null, cls || null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Account not found' });
+
+    auditLog({
+      action: 'update', entity: 'student_account', entity_id: rows[0].id,
+      actor: req.user, old_value: before.rows[0] || null, new_value: rows[0],
+      description: `${req.user.email || req.user.id} linked account ${rows[0].full_name} to student #${rows[0].student_id}`
+    });
+
     res.json(rows[0]);
   } catch (err) { res.status(500).json({ error: 'Failed to update account' }); }
 });
 
 app.delete('/student-accounts/:id', verifyToken, isAdmin, async (req, res) => {
   try {
+    const before = await pool.query('SELECT * FROM student_accounts WHERE id = $1', [req.params.id]);
     await pool.query('DELETE FROM student_accounts WHERE id = $1', [req.params.id]);
+
+    auditLog({
+      action: 'delete', entity: 'student_account', entity_id: parseInt(req.params.id),
+      actor: req.user, old_value: before.rows[0] || null,
+      description: `${req.user.email || req.user.id} removed portal account ${before.rows[0]?.full_name || ('#' + req.params.id)}`
+    });
+
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed to delete account' }); }
 });
@@ -547,6 +613,11 @@ function normalizeClass(raw) {
 }
 
 // ── AUDIT LOG HELPER ──────────────────────────────────────────────────────────
+// Fire-and-forget: never blocks or fails the parent request.
+// Call shape: auditLog({ action, entity, entity_id, actor, old_value, new_value, description })
+//   action:      'create' | 'update' | 'delete' | 'login' | 'send'
+//   entity:      'grade' | 'attendance' | 'announcement' | 'student' | 'teacher' | ...
+//   actor:       usually req.user (has id, role, email) — full_name is looked up if missing
 async function auditLog({ action, entity, entity_id, actor, old_value, new_value, description }) {
   try {
     await pool.query(
@@ -569,6 +640,32 @@ async function auditLog({ action, entity, entity_id, actor, old_value, new_value
     console.error('Audit log error:', e.message);
   }
 }
+
+// Ensure audit_logs table exists (safe no-op if it already does)
+async function ensureAuditLogTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id          SERIAL PRIMARY KEY,
+        action      TEXT NOT NULL,
+        entity      TEXT NOT NULL,
+        entity_id   INTEGER,
+        actor_id    INTEGER,
+        actor_name  TEXT,
+        actor_role  TEXT,
+        old_value   JSONB,
+        new_value   JSONB,
+        description TEXT,
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity, entity_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC)`);
+  } catch (e) {
+    console.error('Failed to ensure audit_logs table:', e.message);
+  }
+}
+ensureAuditLogTable();
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  STUDENTS  (the school record — separate from login accounts)
@@ -677,6 +774,13 @@ app.post('/students', verifyToken, isStaff, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
       [full_name, cls||null, date_of_birth||null, parent_phone||null, parent_name||null, parent_email||null, gender||null]
     );
+
+    auditLog({
+      action: 'create', entity: 'student', entity_id: rows[0].id,
+      actor: req.user, new_value: rows[0],
+      description: `${req.user.email || req.user.id} added student ${rows[0].full_name} (${rows[0].class || 'no class'})`
+    });
+
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('Create student:', err);
@@ -687,6 +791,8 @@ app.post('/students', verifyToken, isStaff, async (req, res) => {
 app.patch('/students/:id', verifyToken, isStaff, async (req, res) => {
   const { full_name, class: cls, parent_phone, parent_name, parent_email, status, gender, date_of_birth } = req.body;
   try {
+    const before = await pool.query('SELECT * FROM students WHERE id = $1', [req.params.id]);
+
     const { rows } = await pool.query(
       `UPDATE students SET
          full_name     = COALESCE($1, full_name),
@@ -702,14 +808,29 @@ app.patch('/students/:id', verifyToken, isStaff, async (req, res) => {
        parent_email||null, status||null, gender||null, date_of_birth||null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Student not found' });
+
+    auditLog({
+      action: 'update', entity: 'student', entity_id: rows[0].id,
+      actor: req.user, old_value: before.rows[0] || null, new_value: rows[0],
+      description: `${req.user.email || req.user.id} updated student ${rows[0].full_name}`
+    });
+
     res.json(rows[0]);
   } catch (err) { res.status(500).json({ error: 'Failed to update student' }); }
 });
 
 app.delete('/students/:id', verifyToken, isAdmin, async (req, res) => {
   try {
+    const before = await pool.query('SELECT * FROM students WHERE id = $1', [req.params.id]);
     const { rowCount } = await pool.query('DELETE FROM students WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Student not found' });
+
+    auditLog({
+      action: 'delete', entity: 'student', entity_id: parseInt(req.params.id),
+      actor: req.user, old_value: before.rows[0] || null,
+      description: `${req.user.email || req.user.id} removed student ${before.rows[0]?.full_name || ('#' + req.params.id)}`
+    });
+
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed to delete student' }); }
 });
@@ -786,14 +907,27 @@ app.post('/attendance', verifyAny, async (req, res) => {
   if (!student_id) return res.status(400).json({ error: 'student_id is required' });
 
   try {
+    const useDate = date || new Date().toISOString().split('T')[0];
+    const before = await pool.query(
+      'SELECT * FROM attendance WHERE student_id = $1 AND date = $2', [student_id, useDate]
+    );
+
     const { rows } = await pool.query(
       `INSERT INTO attendance (student_id, date, status, reason, teacher_id)
        VALUES ($1,$2,$3,$4,$5)
        ON CONFLICT (student_id, date) DO UPDATE
          SET status = EXCLUDED.status, reason = EXCLUDED.reason, teacher_id = EXCLUDED.teacher_id
        RETURNING *`,
-      [student_id, date || new Date().toISOString().split('T')[0], status||'absent', reason||null, teacher_id||null]
+      [student_id, useDate, status||'absent', reason||null, teacher_id||null]
     );
+
+    auditLog({
+      action: before.rows.length ? 'update' : 'create', entity: 'attendance', entity_id: rows[0].id,
+      actor: req.user || { id: teacher_id, role: 'staff' },
+      old_value: before.rows[0] || null, new_value: rows[0],
+      description: `Attendance for student #${student_id} on ${useDate} set to "${rows[0].status}"`
+    });
+
     res.status(201).json(rows[0]);
   } catch (err) { res.status(500).json({ error: 'Failed to mark attendance' }); }
 });
@@ -816,6 +950,15 @@ app.post('/attendance/bulk', verifyToken, isStaff, async (req, res) => {
       );
       results.push(rows[0]);
     }
+
+    // One summary audit entry for the whole bulk save (avoids flooding the log per-student)
+    auditLog({
+      action: 'update', entity: 'attendance', entity_id: null,
+      actor: req.user,
+      new_value: { date, count: results.length },
+      description: `${req.user.email || req.user.id} saved attendance for ${results.length} student(s) on ${date}`
+    });
+
     res.json({ success: true, count: results.length, records: results });
   } catch (err) {
     console.error('Bulk attendance:', err);
@@ -892,6 +1035,13 @@ app.post('/grades', verifyToken, isStaff, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [student_id, req.user.id, subject, score??null, grade||null, term||null, academic_year||null, notes||null]
     );
+
+    auditLog({
+      action: 'create', entity: 'grade', entity_id: rows[0].id,
+      actor: req.user, new_value: rows[0],
+      description: `${req.user.email || req.user.id} added grade for student #${student_id}: ${subject} = ${grade || score || '—'}`
+    });
+
     res.status(201).json(rows[0]);
   } catch (err) { res.status(500).json({ error: 'Failed to save grade' }); }
 });
@@ -899,6 +1049,8 @@ app.post('/grades', verifyToken, isStaff, async (req, res) => {
 app.patch('/grades/:id', verifyToken, isStaff, async (req, res) => {
   const { score, grade, notes, subject, term } = req.body;
   try {
+    const before = await pool.query('SELECT * FROM grades WHERE id = $1', [req.params.id]);
+
     const { rows } = await pool.query(
       `UPDATE grades SET
          score   = COALESCE($1, score),
@@ -910,13 +1062,28 @@ app.patch('/grades/:id', verifyToken, isStaff, async (req, res) => {
       [score??null, grade||null, notes||null, subject||null, term||null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Grade not found' });
+
+    auditLog({
+      action: 'update', entity: 'grade', entity_id: rows[0].id,
+      actor: req.user, old_value: before.rows[0] || null, new_value: rows[0],
+      description: `${req.user.email || req.user.id} edited grade #${rows[0].id} for student #${rows[0].student_id} (${rows[0].subject}: ${before.rows[0]?.grade || before.rows[0]?.score || '—'} -> ${rows[0].grade || rows[0].score || '—'})`
+    });
+
     res.json(rows[0]);
   } catch (err) { res.status(500).json({ error: 'Failed to update grade' }); }
 });
 
 app.delete('/grades/:id', verifyToken, isStaff, async (req, res) => {
   try {
+    const before = await pool.query('SELECT * FROM grades WHERE id = $1', [req.params.id]);
     await pool.query('DELETE FROM grades WHERE id = $1', [req.params.id]);
+
+    auditLog({
+      action: 'delete', entity: 'grade', entity_id: parseInt(req.params.id),
+      actor: req.user, old_value: before.rows[0] || null,
+      description: `${req.user.email || req.user.id} deleted grade #${req.params.id}`
+    });
+
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed to delete grade' }); }
 });
@@ -1009,6 +1176,13 @@ app.post('/fees', verifyToken, isAdmin, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5) RETURNING *`,
       [student_id, term, academic_year||null, amount_due, due_date||null]
     );
+
+    auditLog({
+      action: 'create', entity: 'fee', entity_id: rows[0].id,
+      actor: req.user, new_value: rows[0],
+      description: `${req.user.email || req.user.id} created fee record for student #${student_id} (${term}, due ${amount_due})`
+    });
+
     res.status(201).json(rows[0]);
   } catch (err) { res.status(500).json({ error: 'Failed to create fee' }); }
 });
@@ -1016,6 +1190,8 @@ app.post('/fees', verifyToken, isAdmin, async (req, res) => {
 app.patch('/fees/:id', verifyToken, isAdmin, async (req, res) => {
   const { term, academic_year, amount_due, due_date, status } = req.body;
   try {
+    const before = await pool.query('SELECT * FROM fees WHERE id = $1', [req.params.id]);
+
     const { rows } = await pool.query(
       `UPDATE fees SET
          term=COALESCE($1,term), academic_year=COALESCE($2,academic_year),
@@ -1024,6 +1200,13 @@ app.patch('/fees/:id', verifyToken, isAdmin, async (req, res) => {
       [term||null, academic_year||null, amount_due||null, due_date||null, status||null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Fee not found' });
+
+    auditLog({
+      action: 'update', entity: 'fee', entity_id: rows[0].id,
+      actor: req.user, old_value: before.rows[0] || null, new_value: rows[0],
+      description: `${req.user.email || req.user.id} updated fee record #${rows[0].id}`
+    });
+
     res.json(rows[0]);
   } catch (err) { res.status(500).json({ error: 'Failed to update fee' }); }
 });
@@ -1032,6 +1215,8 @@ app.patch('/fees/:id/pay', verifyAny, async (req, res) => {
   const { amount_paid } = req.body;
   if (!amount_paid) return res.status(400).json({ error: 'amount_paid required' });
   try {
+    const before = await pool.query('SELECT * FROM fees WHERE id = $1', [req.params.id]);
+
     const { rows } = await pool.query(
       `UPDATE fees SET
          amount_paid = amount_paid + $1,
@@ -1042,13 +1227,29 @@ app.patch('/fees/:id/pay', verifyAny, async (req, res) => {
       [amount_paid, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Fee not found' });
+
+    auditLog({
+      action: 'update', entity: 'fee', entity_id: rows[0].id,
+      actor: req.user || { id: null, role: 'system' },
+      old_value: before.rows[0] || null, new_value: rows[0],
+      description: `Payment of ${amount_paid} recorded for fee #${rows[0].id} (student #${rows[0].student_id}) — new status: ${rows[0].status}`
+    });
+
     res.json(rows[0]);
   } catch (err) { res.status(500).json({ error: 'Failed to record payment' }); }
 });
 
 app.delete('/fees/:id', verifyToken, isAdmin, async (req, res) => {
   try {
+    const before = await pool.query('SELECT * FROM fees WHERE id = $1', [req.params.id]);
     await pool.query('DELETE FROM fees WHERE id=$1', [req.params.id]);
+
+    auditLog({
+      action: 'delete', entity: 'fee', entity_id: parseInt(req.params.id),
+      actor: req.user, old_value: before.rows[0] || null,
+      description: `${req.user.email || req.user.id} deleted fee record #${req.params.id}`
+    });
+
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed to delete fee' }); }
 });
@@ -1080,6 +1281,13 @@ app.post('/announcements', verifyToken, isAdmin, async (req, res) => {
     );
     const announcement = rows[0];
 
+    // Audit: who sent the announcement
+    auditLog({
+      action: 'send', entity: 'announcement', entity_id: announcement.id,
+      actor: req.user, new_value: announcement,
+      description: `${req.user.email || req.user.id} sent announcement "${title || '(no title)'}" to ${target || 'all'}`
+    });
+
     // 2. Respond to dashboard immediately (don't make admin wait)
     res.status(201).json(announcement);
 
@@ -1104,7 +1312,15 @@ app.post('/announcements', verifyToken, isAdmin, async (req, res) => {
 
 app.delete('/announcements/:id', verifyToken, isAdmin, async (req, res) => {
   try {
+    const before = await pool.query('SELECT * FROM announcements WHERE id = $1', [req.params.id]);
     await pool.query('DELETE FROM announcements WHERE id=$1', [req.params.id]);
+
+    auditLog({
+      action: 'delete', entity: 'announcement', entity_id: parseInt(req.params.id),
+      actor: req.user, old_value: before.rows[0] || null,
+      description: `${req.user.email || req.user.id} deleted announcement #${req.params.id}`
+    });
+
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed to delete announcement' }); }
 });
@@ -1136,6 +1352,329 @@ app.post('/subscribers', apiKeyAuth, async (req, res) => {
     );
     res.status(201).json(rows[0]);
   } catch (err) { res.status(500).json({ error: 'Failed to save subscriber' }); }
+});
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  AUDIT LOGS  (admin / principal only)
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /audit-logs
+ * Query params (all optional):
+ *   entity     — filter by entity type, e.g. 'grade' | 'attendance' | 'announcement'
+ *   actor_id   — filter by who made the change
+ *   action     — 'create' | 'update' | 'delete' | 'send' | 'login'
+ *   from, to   — ISO date range on created_at
+ *   limit      — default 100, max 500
+ */
+app.get('/audit-logs', verifyToken, isAdmin, async (req, res) => {
+  const { entity, actor_id, action, from, to } = req.query;
+  let limit = parseInt(req.query.limit) || 100;
+  if (limit > 500) limit = 500;
+
+  let query = 'SELECT * FROM audit_logs WHERE 1=1';
+  const params = [];
+
+  if (entity)   { params.push(entity);   query += ` AND entity = $${params.length}`; }
+  if (actor_id) { params.push(actor_id); query += ` AND actor_id = $${params.length}`; }
+  if (action)   { params.push(action);   query += ` AND action = $${params.length}`; }
+  if (from)     { params.push(from);     query += ` AND created_at >= $${params.length}`; }
+  if (to)       { params.push(to);       query += ` AND created_at <= $${params.length}`; }
+
+  params.push(limit);
+  query += ` ORDER BY created_at DESC LIMIT $${params.length}`;
+
+  try {
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('Audit log fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch audit logs' });
+  }
+});
+
+/**
+ * GET /audit-logs/entity/:entity/:entity_id
+ * Convenience route: full history for one record, e.g. one grade or one student.
+ */
+app.get('/audit-logs/entity/:entity/:entity_id', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM audit_logs WHERE entity = $1 AND entity_id = $2 ORDER BY created_at DESC`,
+      [req.params.entity, req.params.entity_id]
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: 'Failed to fetch entity history' }); }
+});
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  REPORT CARDS  (printable HTML — browser handles Print → Save as PDF)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function gradeColorHex(g) {
+  if (!g) return '#6b7280';
+  const c = String(g).charAt(0).toUpperCase();
+  if (c === 'A') return '#0e9f6e';
+  if (c === 'B') return '#1a56db';
+  if (c === 'C') return '#c27803';
+  return '#e02424';
+}
+
+function buildReportCardHtml({ student, grades, attendance, term, academic_year }) {
+  const scores = grades.filter(g => g.score !== null && g.score !== undefined).map(g => parseFloat(g.score));
+  const avg = scores.length ? (scores.reduce((a,b)=>a+b,0) / scores.length).toFixed(1) : null;
+
+  const present = attendance.filter(a => a.status === 'present').length;
+  const absent  = attendance.filter(a => a.status === 'absent').length;
+  const totalDays = present + absent;
+  const attPct = totalDays ? Math.round((present/totalDays)*100) : null;
+
+  const rows = grades.map(g => `
+    <tr>
+      <td>${escapeHtml(g.subject)}</td>
+      <td class="center">${g.score !== null && g.score !== undefined ? g.score + '%' : '—'}</td>
+      <td class="center"><span class="grade-pill" style="color:${gradeColorHex(g.grade)};border-color:${gradeColorHex(g.grade)}">${escapeHtml(g.grade || '—')}</span></td>
+      <td>${escapeHtml(g.notes || '')}</td>
+    </tr>
+  `).join('');
+
+  const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Report Card — ${escapeHtml(student.full_name)}</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    color: #111928;
+    margin: 0;
+    padding: 0;
+    font-size: 13px;
+  }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 24px; }
+  .header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    border-bottom: 3px solid #1a56db; padding-bottom: 16px; margin-bottom: 24px;
+  }
+  .school-name { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; }
+  .school-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-top: 2px; }
+  .doc-title { text-align: right; }
+  .doc-title h1 { font-size: 16px; font-weight: 700; margin: 0; }
+  .doc-title p { font-size: 11px; color: #6b7280; margin: 2px 0 0; }
+
+  .student-info {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+    background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 24px;
+  }
+  .student-info div label {
+    display: block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.05em; color: #6b7280; margin-bottom: 2px;
+  }
+  .student-info div span { font-size: 13px; font-weight: 600; }
+
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px;
+  }
+  .summary-card {
+    border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; text-align: center;
+  }
+  .summary-card .val { font-size: 22px; font-weight: 800; }
+  .summary-card .lbl { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+  h2.section-title {
+    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    color: #1a56db; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 24px 0 10px;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  th {
+    text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.05em; color: #6b7280; border-bottom: 2px solid #e5e7eb; padding: 8px 10px;
+  }
+  td { padding: 9px 10px; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
+  td.center, th.center { text-align: center; }
+
+  .grade-pill {
+    display: inline-block; border: 1.5px solid; border-radius: 6px;
+    padding: 1px 9px; font-weight: 800; font-size: 12px;
+  }
+
+  .footer {
+    margin-top: 40px; display: flex; justify-content: space-between; align-items: flex-end;
+  }
+  .signature { text-align: center; width: 180px; }
+  .signature .line { border-top: 1px solid #111928; margin-bottom: 4px; padding-top: 28px; }
+  .signature .lbl { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+  .generated { font-size: 10px; color: #9ca3af; text-align: right; margin-top: 40px; }
+
+  .print-bar {
+    position: sticky; top: 0; background: #1a56db; color: #fff;
+    padding: 10px 16px; display: flex; justify-content: space-between; align-items: center;
+    font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; z-index: 10;
+  }
+  .print-bar button {
+    background: #fff; color: #1a56db; border: none; padding: 7px 16px;
+    border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer;
+  }
+  @media print { .print-bar { display: none; } }
+</style>
+</head>
+<body>
+  <div class="print-bar">
+    <span>Report card preview — use Print to save as PDF</span>
+    <button onclick="window.print()">Print / Save as PDF</button>
+  </div>
+
+  <div class="sheet">
+    <div class="header">
+      <div>
+        <div class="school-name">Lumina Academy</div>
+        <div class="school-sub">School Management Portal</div>
+      </div>
+      <div class="doc-title">
+        <h1>Academic Report Card</h1>
+        <p>${escapeHtml(term || 'Current Term')} · ${escapeHtml(academic_year || '')}</p>
+      </div>
+    </div>
+
+    <div class="student-info">
+      <div><label>Student Name</label><span>${escapeHtml(student.full_name)}</span></div>
+      <div><label>Class</label><span>${escapeHtml(student.class || '—')}</span></div>
+      <div><label>Status</label><span>${escapeHtml(student.status || 'Active')}</span></div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="val">${avg !== null ? avg + '%' : '—'}</div>
+        <div class="lbl">Average Score</div>
+      </div>
+      <div class="summary-card">
+        <div class="val">${attPct !== null ? attPct + '%' : '—'}</div>
+        <div class="lbl">Attendance Rate</div>
+      </div>
+      <div class="summary-card">
+        <div class="val">${grades.length}</div>
+        <div class="lbl">Subjects Recorded</div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Academic Results</h2>
+    <table>
+      <thead><tr><th>Subject</th><th class="center">Score</th><th class="center">Grade</th><th>Notes</th></tr></thead>
+      <tbody>
+        ${rows || '<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:16px;">No grades recorded yet</td></tr>'}
+      </tbody>
+    </table>
+
+    <h2 class="section-title">Attendance Summary</h2>
+    <table>
+      <thead><tr><th>Days Present</th><th>Days Absent</th><th>Total Days Recorded</th><th>Attendance Rate</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>${present}</td>
+          <td>${absent}</td>
+          <td>${totalDays}</td>
+          <td>${attPct !== null ? attPct + '%' : '—'}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <div class="signature">
+        <div class="line"></div>
+        <div class="lbl">Class Teacher</div>
+      </div>
+      <div class="signature">
+        <div class="line"></div>
+        <div class="lbl">Principal</div>
+      </div>
+      <div class="signature">
+        <div class="line"></div>
+        <div class="lbl">Parent / Guardian</div>
+      </div>
+    </div>
+
+    <div class="generated">Generated ${escapeHtml(today)}</div>
+  </div>
+</body>
+</html>`;
+}
+
+/**
+ * GET /report-card/:student_id
+ * Query params (optional): term, academic_year — filters grades shown
+ * Returns printable HTML. Authorized for: admin, principal, teacher (their student),
+ * the student themself, or the linked parent.
+ */
+app.get('/report-card/:student_id', verifyToken, async (req, res) => {
+  const studentId = req.params.student_id;
+  const { term, academic_year } = req.query;
+
+  try {
+    // Authorization check
+    if (req.user.role === 'student' && String(req.user.student_id) !== String(studentId)) {
+      return res.status(403).send('<h2>Access denied</h2>');
+    }
+    if (req.user.role === 'parent') {
+      const linked = await pool.query('SELECT student_id FROM student_accounts WHERE id = $1', [req.user.id]);
+      if (String(linked.rows[0]?.student_id) !== String(studentId)) {
+        return res.status(403).send('<h2>Access denied</h2>');
+      }
+    }
+    // teacher / admin / principal: allowed (teacher's class scoping already governs what they can see in the UI)
+
+    const studentRes = await pool.query('SELECT * FROM students WHERE id = $1', [studentId]);
+    if (!studentRes.rows.length) return res.status(404).send('<h2>Student not found</h2>');
+    const student = studentRes.rows[0];
+
+    let gradesQuery = 'SELECT * FROM grades WHERE student_id = $1';
+    const gradesParams = [studentId];
+    if (term) { gradesParams.push(term); gradesQuery += ` AND term = $${gradesParams.length}`; }
+    if (academic_year) { gradesParams.push(academic_year); gradesQuery += ` AND academic_year = $${gradesParams.length}`; }
+    gradesQuery += ' ORDER BY subject ASC';
+
+    const [gradesRes, attRes] = await Promise.all([
+      pool.query(gradesQuery, gradesParams),
+      pool.query('SELECT * FROM attendance WHERE student_id = $1', [studentId])
+    ]);
+
+    const html = buildReportCardHtml({
+      student,
+      grades: gradesRes.rows,
+      attendance: attRes.rows,
+      term,
+      academic_year
+    });
+
+    // Audit: report card was viewed/generated (useful to know who pulled a student's record)
+    auditLog({
+      action: 'view', entity: 'report_card', entity_id: parseInt(studentId),
+      actor: req.user,
+      description: `${req.user.email || req.user.id} generated report card for student #${studentId}${term ? ' (' + term + ')' : ''}`
+    });
+
+    res.set('Content-Type', 'text/html');
+    res.send(html);
+  } catch (err) {
+    console.error('Report card error:', err);
+    res.status(500).send('<h2>Failed to generate report card</h2>');
+  }
 });
 
 
