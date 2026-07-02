@@ -1,0 +1,2425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumina Academy — School Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+ --bg:#f0f4f8; --white:#fff; --primary:#1a56db; --primary-dark:#1240a0;
+ --primary-light:#e8f0fe; --success:#0e9f6e; --success-light:#def7ec;
+ --danger:#e02424; --danger-light:#fde8e8; --warning:#c27803;
+ --warning-light:#fdf6b2; --purple:#7c3aed; --purple-light:#ede9fe;
+ --teal:#0891b2; --teal-light:#cffafe; --text:#111928; --text-2:#6b7280;
+ --border:#e5e7eb; --sidebar:#0a0f1e; --sidebar-hover:#131929;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ── AUTH PAGES ── */
+.auth-page{
+ min-height:100vh;display:none;align-items:center;justify-content:center;
+ background:linear-gradient(135deg,#0a0f1e 0%,#0f172a 40%,#1e1b4b 100%);
+ padding:20px;
+}
+.auth-page.active{display:flex;}
+
+/* ROLE SELECT */
+.role-box{text-align:center;width:100%;max-width:620px;}
+.role-box h1{font-size:30px;font-weight:800;color:#fff;margin-bottom:6px;}
+.role-box>p{color:rgba(255,255,255,.5);font-size:15px;margin-bottom:36px;}
+.role-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px;}
+.role-card{
+ background:rgba(255,255,255,.06);
+ border:1px solid rgba(255,255,255,.1);
+ border-radius:16px;padding:28px 20px;cursor:pointer;transition:all .2s;
+ backdrop-filter:blur(12px);text-align:center;
+ position:relative;overflow:hidden;
+}
+.role-card::before{
+ content:'';position:absolute;inset:0;
+ background:linear-gradient(135deg,rgba(26,86,219,.15),rgba(124,58,237,.15));
+ opacity:0;transition:opacity .2s;
+}
+.role-card:hover{
+ background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);
+ transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3);
+}
+.role-card:hover::before{opacity:1;}
+.role-card .rc-icon{font-size:34px;margin-bottom:10px;}
+.role-card .rc-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;letter-spacing:0.02em;}
+.role-card .rc-desc{font-size:12px;color:rgba(255,255,255,.45);}
+.role-signup-link{color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;}
+.role-signup-link a{color:rgba(255,255,255,.9);font-weight:700;cursor:pointer;text-decoration:underline;}
+
+/* LOGIN / SIGNUP BOX */
+.auth-box{
+ background:#fff;border-radius:20px;padding:36px 36px 40px;
+ width:100%;max-width:460px;box-shadow:0 25px 60px rgba(0,0,0,.35);
+}
+.auth-box-wide{max-width:560px;}
+.auth-logo{text-align:center;margin-bottom:28px;}
+.auth-logo .icon{
+ width:60px;height:60px;background:var(--primary-light);border-radius:14px;
+ display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px;
+}
+.auth-logo h1{font-size:21px;font-weight:800;color:var(--text);}
+.auth-logo p{font-size:13px;color:var(--text-2);margin-top:4px;}
+.back-link{
+ display:inline-flex;align-items:center;gap:5px;color:var(--primary);
+ font-size:13px;font-weight:600;cursor:pointer;margin-bottom:18px;
+ background:none;border:none;font-family:inherit;padding:0;
+}
+.back-link:hover{text-decoration:underline;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-group{margin-bottom:14px;}
+.form-group label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:5px;}
+.form-group input,.form-group select,.form-group textarea{
+ width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;
+ font-size:14px;font-family:'Inter',sans-serif;color:var(--text);background:#fff;
+ transition:border-color .2s,box-shadow .2s;outline:none;
+}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+ border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,86,219,.1);
+}
+.form-group .hint{font-size:11px;color:var(--text-2);margin-top:4px;}
+.error-msg{
+ background:var(--danger-light);color:var(--danger);padding:10px 14px;
+ border-radius:10px;font-size:13px;margin-bottom:14px;display:none;
+}
+.success-msg{
+ background:var(--success-light);color:var(--success);padding:10px 14px;
+ border-radius:10px;font-size:13px;margin-bottom:14px;display:none;
+}
+.auth-footer{text-align:center;margin-top:18px;font-size:13px;color:var(--text-2);}
+.auth-footer a{color:var(--primary);font-weight:600;cursor:pointer;}
+.auth-footer a:hover{text-decoration:underline;}
+.divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--text-2);font-size:12px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* BUTTONS */
+.btn{
+ padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;
+ font-family:'Inter',sans-serif;cursor:pointer;border:none;transition:all .2s;
+ display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px);box-shadow:0 4px 12px rgba(26,86,219,.3);}
+.btn-primary:disabled{background:#93c5fd;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-success{background:var(--success);color:#fff;}
+.btn-success:hover{background:#0a7a54;}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger:hover{background:#b91c1c;}
+.btn-secondary{background:#fff;color:var(--text);border:1.5px solid var(--border);}
+.btn-secondary:hover{background:var(--bg);}
+.btn-warning{background:var(--warning);color:#fff;}
+.btn-full{width:100%;justify-content:center;padding:13px;}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px;}
+
+/* ── APP SHELL ── */
+#app{display:none;min-height:100vh;}
+.layout{display:flex;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{
+ width:248px;background:var(--sidebar);display:flex;flex-direction:column;
+ position:fixed;top:0;left:0;bottom:0;z-index:100;
+}
+.sidebar-brand{padding:18px 18px 14px;border-bottom:1px solid rgba(255,255,255,.06);}
+.brand-inner{display:flex;align-items:center;gap:10px;}
+.brand-icon{
+ width:36px;height:36px;background:linear-gradient(135deg,#1a56db,#7c3aed);border-radius:10px;
+ display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+}
+.sidebar-brand h2{font-size:14px;font-weight:800;color:#fff;line-height:1.2;}
+.sidebar-brand p{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;}
+.sidebar-user{
+ padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.06);
+ display:flex;align-items:center;gap:10px;
+}
+.user-avatar{
+ width:36px;height:36px;background:linear-gradient(135deg,var(--primary),#7c3aed);
+ border-radius:50%;display:flex;align-items:center;justify-content:center;
+ font-size:13px;font-weight:800;color:#fff;flex-shrink:0;
+}
+.user-info{flex:1;min-width:0;}
+.user-name{font-size:13px;font-weight:600;color:#fff;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.user-role-badge{
+ font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;
+ letter-spacing:.06em;font-weight:600;margin-top:2px;
+}
+.online-dot{width:8px;height:8px;background:var(--success);border-radius:50%;border:2px solid var(--sidebar);flex-shrink:0;}
+.sidebar-nav{flex:1;padding:8px 0;overflow-y:auto;}
+.nav-section{
+ padding:10px 18px 4px;font-size:9px;font-weight:700;
+ letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25);
+}
+.nav-item{
+ display:flex;align-items:center;gap:10px;padding:9px 18px;
+ font-size:13px;font-weight:500;color:rgba(255,255,255,.6);cursor:pointer;
+ transition:all .15s;border-left:3px solid transparent;margin:1px 0;
+}
+.nav-item:hover{background:var(--sidebar-hover);color:#fff;}
+.nav-item.active{background:rgba(26,86,219,.2);color:#fff;border-left-color:var(--primary);font-weight:600;}
+.nav-icon{font-size:15px;width:20px;text-align:center;}
+.sidebar-footer{padding:14px 14px;border-top:1px solid rgba(255,255,255,.06);}
+
+/* MAIN */
+.main{flex:1;margin-left:248px;display:flex;flex-direction:column;}
+.topbar{
+ background:#fff;border-bottom:1px solid var(--border);padding:0 28px;
+ height:60px;display:flex;align-items:center;justify-content:space-between;
+ position:sticky;top:0;z-index:50;
+}
+.topbar h1{font-size:17px;font-weight:700;}
+.date-chip{
+ font-size:12px;color:var(--text-2);font-weight:500;background:var(--bg);
+ padding:5px 12px;border-radius:8px;border:1px solid var(--border);
+}
+.content{padding:24px 28px;flex:1;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* STAT CARDS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.stat-card{
+ background:#fff;border-radius:14px;padding:20px;border:1px solid var(--border);
+ position:relative;overflow:hidden;transition:box-shadow .2s;
+}
+.stat-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);}
+.stat-card::before{
+ content:'';position:absolute;top:0;left:0;right:0;height:3px;
+ background:var(--sc,var(--primary));
+}
+.stat-icon-wrap{
+ width:40px;height:40px;border-radius:10px;display:flex;align-items:center;
+ justify-content:center;font-size:20px;margin-bottom:12px;background:var(--sb,var(--primary-light));
+}
+.stat-label{font-size:11px;font-weight:700;color:var(--text-2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;}
+.stat-value{font-size:30px;font-weight:800;color:var(--text);line-height:1;margin-bottom:4px;}
+.stat-sub{font-size:12px;color:var(--text-2);}
+
+/* CARDS */
+.card{background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:20px;}
+.card-header{
+ padding:14px 18px;border-bottom:1px solid var(--border);
+ display:flex;align-items:center;justify-content:space-between;background:#fafafa;
+}
+.card-title{font-size:14px;font-weight:700;}
+.card-body{padding:18px;}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{
+ padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text-2);
+ text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);background:#f9fafb;
+}
+td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#f9fafb;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;}
+.badge-green{background:var(--success-light);color:var(--success);}
+.badge-red{background:var(--danger-light);color:var(--danger);}
+.badge-yellow{background:var(--warning-light);color:var(--warning);}
+.badge-blue{background:var(--primary-light);color:var(--primary);}
+.badge-gray{background:#f3f4f6;color:var(--text-2);}
+.badge-purple{background:var(--purple-light);color:var(--purple);}
+
+/* ATTENDANCE */
+.att-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.att-card{
+ background:#fff;border:1.5px solid var(--border);border-radius:12px;
+ padding:12px 14px;display:flex;align-items:center;justify-content:space-between;transition:border-color .2s;
+}
+.att-card.is-present{border-color:var(--success);}
+.att-card.is-absent{border-color:var(--danger);}
+.att-card h4{font-size:13px;font-weight:600;}
+.att-card p{font-size:11px;color:var(--text-2);margin-top:2px;}
+.att-toggle{display:flex;gap:6px;}
+.att-btn{
+ padding:5px 11px;border-radius:7px;font-size:11px;font-weight:700;
+ cursor:pointer;border:none;transition:all .15s;font-family:inherit;
+}
+.att-btn.p{background:var(--success-light);color:var(--success);}
+.att-btn.p.active{background:var(--success);color:#fff;}
+.att-btn.a{background:var(--danger-light);color:var(--danger);}
+.att-btn.a.active{background:var(--danger);color:#fff;}
+.att-chips{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.att-chip{display:flex;align-items:center;gap:5px;padding:5px 13px;border-radius:100px;font-size:12px;font-weight:700;}
+.att-chip.p{background:var(--success-light);color:var(--success);}
+.att-chip.a{background:var(--danger-light);color:var(--danger);}
+.att-chip.t{background:var(--primary-light);color:var(--primary);}
+
+/* MODAL */
+.modal-overlay{
+ position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;
+ display:none;align-items:center;justify-content:center;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+ background:#fff;border-radius:20px;padding:26px;width:100%;max-width:480px;
+ max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);
+}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+.modal-header h2{font-size:17px;font-weight:800;}
+.modal-close{
+ background:var(--bg);border:none;width:30px;height:30px;border-radius:7px;
+ font-size:14px;cursor:pointer;color:var(--text-2);display:flex;align-items:center;justify-content:center;
+}
+.modal-close:hover{background:var(--border);}
+
+/* ANNOUNCEMENTS */
+.ann-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:10px;}
+.ann-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px;}
+.ann-title{font-size:14px;font-weight:700;}
+.ann-date{font-size:11px;color:var(--text-2);white-space:nowrap;font-weight:500;}
+.ann-body{font-size:13px;color:var(--text-2);line-height:1.6;}
+
+/* PROGRESS */
+.progress-bar{background:var(--border);border-radius:100px;height:6px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:100px;background:var(--primary);transition:width .4s;}
+
+/* SECTION HEADER */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:22px;right:22px;z-index:999;display:flex;flex-direction:column;gap:7px;}
+.toast{
+ background:var(--sidebar);color:#fff;border-radius:12px;padding:11px 16px;
+ font-size:13px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.2);
+ animation:slideUp .3s ease;display:flex;align-items:center;gap:7px;
+}
+.toast.s{background:var(--success);}
+.toast.e{background:var(--danger);}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* MISC */
+.loading{text-align:center;padding:36px;color:var(--text-2);font-size:13px;}
+.empty{text-align:center;padding:44px 20px;color:var(--text-2);}
+.empty .ei{font-size:38px;margin-bottom:10px;}
+.empty h3{font-size:15px;font-weight:600;color:var(--text);margin-bottom:5px;}
+.empty p{font-size:13px;}
+.flex{display:flex;}.gap-2{gap:8px;}.gap-3{gap:12px;}.items-center{align-items:center;}
+.mb-4{margin-bottom:16px;}.mb-6{margin-bottom:24px;}
+.search-input{
+ padding:9px 13px;border:1.5px solid var(--border);border-radius:10px;
+ font-size:13px;font-family:'Inter',sans-serif;outline:none;background:#fff;transition:border-color .2s;
+}
+.search-input:focus{border-color:var(--primary);}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.info-banner{
+ border-radius:12px;padding:13px 16px;margin-bottom:16px;font-size:13px;
+ display:flex;align-items:flex-start;gap:10px;
+}
+.info-banner.warn{background:#fef3c7;border:1px solid #f59e0b;color:#92400e;}
+.info-banner.info{background:var(--primary-light);border:1px solid var(--primary);color:var(--primary-dark);}
+.info-banner.success{background:var(--success-light);border:1px solid var(--success);color:#065f46;}
+
+/* STUDENT PORTAL RESULT CARD */
+.result-subject-card{
+ background:#fff;border:1px solid var(--border);border-radius:12px;
+ padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
+ margin-bottom:8px;
+}
+.grade-circle{
+ width:46px;height:46px;border-radius:50%;display:flex;align-items:center;
+ justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;
+}
+.gc-A{background:var(--success-light);color:var(--success);}
+.gc-B{background:var(--primary-light);color:var(--primary);}
+.gc-C{background:var(--warning-light);color:var(--warning);}
+.gc-D,.gc-F{background:var(--danger-light);color:var(--danger);}
+.gc-X{background:#f3f4f6;color:var(--text-2);}
+
+/* INLINE EDIT */
+.inline-edit-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+
+/* ── MOBILE HAMBURGER ── */
+.hamburger{
+ display:none;background:none;border:none;cursor:pointer;
+ padding:6px;border-radius:8px;color:var(--text);font-size:22px;
+ line-height:1;
+}
+.hamburger:hover{background:var(--bg);}
+
+/* SIDEBAR OVERLAY (mobile) */
+.sidebar-overlay{
+ display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;
+}
+.sidebar-overlay.open{display:block;}
+
+/* BOTTOM NAV (mobile) */
+.bottom-nav{
+ display:none;position:fixed;bottom:0;left:0;right:0;
+ background:var(--sidebar);z-index:98;
+ padding:8px 4px calc(8px + env(safe-area-inset-bottom));
+ border-top:1px solid rgba(255,255,255,.08);
+}
+.bottom-nav-inner{display:flex;justify-content:space-around;align-items:center;}
+.bn-item{
+ display:flex;flex-direction:column;align-items:center;gap:3px;
+ padding:6px 10px;border-radius:10px;cursor:pointer;
+ color:rgba(255,255,255,.5);font-size:10px;font-weight:600;
+ transition:all .15s;min-width:48px;text-align:center;border:none;background:none;
+ font-family:'Inter',sans-serif;
+}
+.bn-item .bn-icon{font-size:20px;line-height:1;}
+.bn-item.active{color:#fff;background:rgba(26,86,219,.3);}
+.bn-item:hover{color:#fff;}
+.bn-more{position:relative;}
+.bn-more-menu{
+ position:fixed;bottom:70px;right:8px;
+ background:var(--sidebar);border:1px solid rgba(255,255,255,.1);
+ border-radius:14px;padding:8px;min-width:180px;
+ display:none;z-index:200;box-shadow:0 8px 30px rgba(0,0,0,.4);
+}
+.bn-more-menu.open{display:block;}
+.bn-more-item{
+ display:flex;align-items:center;gap:10px;padding:10px 14px;
+ border-radius:10px;color:rgba(255,255,255,.7);font-size:13px;
+ font-weight:500;cursor:pointer;border:none;background:none;
+ width:100%;font-family:'Inter',sans-serif;text-align:left;
+}
+.bn-more-item:hover{background:var(--sidebar-hover);color:#fff;}
+.bn-more-item.active{background:rgba(26,86,219,.3);color:#fff;}
+
+/* MOBILE CARD TABLE — cards instead of rows */
+.mobile-card-list{display:none;}
+.m-card{
+ background:#fff;border:1px solid var(--border);border-radius:12px;
+ padding:14px 16px;margin-bottom:10px;
+}
+.m-card-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.m-card-row:last-child{margin-bottom:0;}
+.m-card-label{font-size:11px;color:var(--text-2);font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+.m-card-val{font-size:13px;font-weight:600;text-align:right;}
+.m-card-actions{display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+
+/* ── AUTH BACKGROUND GLOW ── */
+.auth-page::before {
+ content:'';position:fixed;inset:0;pointer-events:none;
+ background:
+ radial-gradient(ellipse 60% 50% at 20% 20%, rgba(26,86,219,0.15) 0%, transparent 70%),
+ radial-gradient(ellipse 50% 40% at 80% 80%, rgba(124,58,237,0.12) 0%, transparent 70%);
+ z-index:0;
+}
+.auth-page > * { position:relative; z-index:1; }
+
+/* ── NAV ACTIVE COLOR ── */
+.nav-item.active {
+ background:linear-gradient(90deg,rgba(26,86,219,0.25),rgba(124,58,237,0.1));
+ color:#fff;border-left-color:#7c3aed;font-weight:600;
+}
+
+/* ── TOPBAR BRAND LINE ── */
+.topbar {
+ background:#fff;border-bottom:1px solid var(--border);padding:0 28px;
+ height:60px;display:flex;align-items:center;justify-content:space-between;
+ position:sticky;top:0;z-index:50;
+ border-top:2px solid transparent;
+ border-image:linear-gradient(90deg,#1a56db,#7c3aed) 1;
+}
+
+@media(max-width:768px){
+ .sidebar{transform:translateX(-100%);transition:transform .25s ease;z-index:100;}
+ .sidebar.open{transform:translateX(0);}
+ .main{margin-left:0;}
+ .hamburger{display:flex;}
+ .topbar{padding:0 14px;}
+ .topbar h1{font-size:15px;}
+ .date-chip{font-size:11px;padding:4px 8px;}
+ .content{padding:14px;padding-bottom:80px;}
+ .stats-grid{grid-template-columns:1fr 1fr;gap:12px;}
+ .stat-card{padding:14px;}
+ .stat-value{font-size:24px;}
+ .two-col{grid-template-columns:1fr;}
+ .att-grid{grid-template-columns:1fr;}
+ .form-row{grid-template-columns:1fr;}
+ .desktop-table{display:none;}
+ .mobile-card-list{display:block;}
+ .auth-box{padding:24px 20px 28px;border-radius:16px;}
+ .auth-box-wide{max-width:100%;}
+ .role-box h1{font-size:24px;}
+ .role-box>p{font-size:14px;margin-bottom:24px;}
+ .bottom-nav{display:block;}
+ .modal{
+ border-radius:20px 20px 0 0;max-width:100%;width:100%;
+ position:fixed;bottom:0;left:0;right:0;max-height:92vh;
+ }
+ .modal-overlay{align-items:flex-end;}
+ .ann-card{padding:12px 14px;}
+ .info-banner{font-size:12px;padding:10px 12px;}
+}
+
+@media(max-width:480px){
+ .stats-grid{grid-template-columns:1fr 1fr;gap:10px;}
+ .stat-value{font-size:22px;}
+ .role-cards{grid-template-columns:1fr 1fr;gap:10px;}
+ .role-card{padding:18px 12px;}
+ .role-card .rc-icon{font-size:28px;}
+ .role-card .rc-title{font-size:13px;}
+ .role-card .rc-desc{font-size:11px;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toasts"></div>
+
+<!-- ══ PAGE 1: ROLE SELECT ══ -->
+<div class="auth-page active" id="pg-roles">
+ <div class="role-box">
+ <div style="margin-bottom:18px;display:flex;justify-content:center;">
+ <svg width="88" height="88" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+ <circle cx="44" cy="44" r="44" fill="url(#lg1)"/>
+ <defs>
+ <linearGradient id="lg1" x1="0" y1="0" x2="88" y2="88" gradientUnits="userSpaceOnUse">
+ <stop offset="0%" stop-color="#1a56db"/>
+ <stop offset="100%" stop-color="#7c3aed"/>
+ </linearGradient>
+ </defs>
+ <path d="M20 57V31a1 1 0 011-1c6 0 15 2 23 9 8-7 17-9 23-9a1 1 0 011 1v26a1 1 0 01-1 1c-6 0-15 2-23 9-8-7-17-9-23-9a1 1 0 01-1-1z" fill="white" opacity="0.95"/>
+ <line x1="44" y1="39" x2="44" y2="67" stroke="#1a56db" stroke-width="2.5"/>
+ <path d="M44 17l2.5 6h6.5l-5.3 3.8 2 6.2L44 29.5l-5.7 3.5 2-6.2L35 22.5l6.5.5z" fill="white" opacity="0.95"/>
+ </svg>
+ </div>
+ <h1 style="letter-spacing:-0.5px;">Lumina Academy</h1>
+ <p style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px;">School Management Portal</p>
+ <p>Select your role to sign in</p>
+ <div class="role-cards">
+ <div class="role-card" onclick="goLogin('admin')">
+ <div class="rc-title">Admin / Principal</div>
+ <div class="rc-desc">Full school management</div>
+ </div>
+ <div class="role-card" onclick="goLogin('teacher')">
+ <div class="rc-title">Teacher</div>
+ <div class="rc-desc">My class, attendance & grades</div>
+ </div>
+ <div class="role-card" onclick="goLogin('student')">
+ <div class="rc-title">Student</div>
+ <div class="rc-desc">View my results & attendance</div>
+ </div>
+ <div class="role-card" onclick="goLogin('parent')">
+ <div class="rc-title">Parent</div>
+ <div class="rc-desc">Monitor my child's progress</div>
+ </div>
+ </div>
+ <div class="role-signup-link">New student or parent? <a onclick="goSignup()">Create an account</a>
+ </div>
+ </div>
+</div>
+
+<!-- ══ PAGE 2: LOGIN ══ -->
+<div class="auth-page" id="pg-login">
+ <div class="auth-box">
+ <button class="back-link" onclick="goRoles()">&larr; Back</button>
+ <div class="auth-logo">
+ <div style="display:flex;justify-content:center;margin-bottom:12px;">
+ <svg width="48" height="48" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+ <circle cx="44" cy="44" r="44" fill="url(#lg2)"/>
+ <defs>
+ <linearGradient id="lg2" x1="0" y1="0" x2="88" y2="88" gradientUnits="userSpaceOnUse">
+ <stop offset="0%" stop-color="#1a56db"/>
+ <stop offset="100%" stop-color="#7c3aed"/>
+ </linearGradient>
+ </defs>
+ <path d="M20 57V31a1 1 0 011-1c6 0 15 2 23 9 8-7 17-9 23-9a1 1 0 011 1v26a1 1 0 01-1 1c-6 0-15 2-23 9-8-7-17-9-23-9a1 1 0 01-1-1z" fill="white" opacity="0.95"/>
+ <line x1="44" y1="39" x2="44" y2="67" stroke="#1a56db" stroke-width="5"/>
+ <path d="M44 17l2.5 6h6.5l-5.3 3.8 2 6.2L44 29.5l-5.7 3.5 2-6.2L35 22.5l6.5.5z" fill="white"/>
+ </svg>
+ </div>
+ <!-- BUG FIX: Added id="login-role-badge" span + updated sub text element IDs -->
+ <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-2);margin-bottom:4px;">Lumina Academy</div>
+ <h1 id="login-title">Sign In</h1>
+ <p id="login-sub">Enter your credentials</p>
+ </div>
+ <div class="error-msg" id="login-err"></div>
+ <div class="form-group">
+ <label>Email address</label>
+ <input type="email" id="li-email" placeholder="your@email.com">
+ </div>
+ <div class="form-group">
+ <label>Password</label>
+ <input type="password" id="li-pass" placeholder="••••••••" onkeypress="if(event.key==='Enter')doLogin()">
+ </div>
+ <button class="btn btn-primary btn-full" id="li-btn" onclick="doLogin()">Sign In</button>
+ <div class="auth-footer" id="login-footer-signup" style="display:none;">Don't have an account? <a onclick="goSignup()">Create one here</a>
+ </div>
+ </div>
+</div>
+
+<!-- ══ PAGE 3: STUDENT / PARENT SIGNUP ══ -->
+<div class="auth-page" id="pg-signup">
+ <div class="auth-box auth-box-wide" style="max-height:95vh;overflow-y:auto;">
+ <button class="back-link" onclick="goRoles()">&larr; Back</button>
+ <div class="auth-logo">
+ <div style="display:flex;justify-content:center;margin-bottom:10px;">
+ <svg width="40" height="40" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+ <circle cx="44" cy="44" r="44" fill="url(#lg3)"/>
+ <defs><linearGradient id="lg3" x1="0" y1="0" x2="88" y2="88" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1a56db"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient></defs>
+ <path d="M20 57V31a1 1 0 011-1c6 0 15 2 23 9 8-7 17-9 23-9a1 1 0 011 1v26a1 1 0 01-1 1c-6 0-15 2-23 9-8-7-17-9-23-9a1 1 0 01-1-1z" fill="white" opacity="0.95"/>
+ <line x1="44" y1="39" x2="44" y2="67" stroke="#1a56db" stroke-width="5"/>
+ <path d="M44 17l2.5 6h6.5l-5.3 3.8 2 6.2L44 29.5l-5.7 3.5 2-6.2L35 22.5l6.5.5z" fill="white"/>
+ </svg>
+ </div>
+ <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-2);margin-bottom:4px;">Lumina Academy</div>
+ <h1>Create Account</h1>
+ <p>Students and parents register here</p>
+ </div>
+
+ <div class="form-group">
+ <label>I am a…</label>
+ <select id="su-role" onchange="toggleSignupRole()">
+ <option value="student">Student</option>
+ <option value="parent">Parent</option>
+ </select>
+ </div>
+
+ <div class="error-msg" id="su-err"></div>
+ <div class="success-msg" id="su-ok"></div>
+
+ <div class="divider">Your Information</div>
+
+ <div class="form-row">
+ <div class="form-group">
+ <label>Full Name *</label>
+ <input type="text" id="su-name" placeholder="Your full name">
+ </div>
+ <div class="form-group">
+ <label>Gender</label>
+ <select id="su-gender">
+ <option value="">Select...</option>
+ <option value="male">Male</option>
+ <option value="female">Female</option>
+ </select>
+ </div>
+ </div>
+
+ <div class="divider">Academic Information</div>
+
+ <div class="form-group">
+ <label>Grade *</label>
+ <select id="su-grade" onchange="updateClassPreview()">
+ <option value="">Select grade...</option>
+ <option value="1">Grade 1</option><option value="2">Grade 2</option>
+ <option value="3">Grade 3</option><option value="4">Grade 4</option>
+ <option value="5">Grade 5</option><option value="6">Grade 6</option>
+ <option value="7">Grade 7</option><option value="8">Grade 8</option>
+ <option value="9">Grade 9</option><option value="10">Grade 10</option>
+ <option value="11">Grade 11</option><option value="12">Grade 12</option>
+ </select>
+ </div>
+
+ <div id="su-stream-section">
+ <div class="form-group">
+ <label>Stream<span style="color:var(--text-2);font-weight:400;">(if applicable)</span></label>
+ <select id="su-stream" onchange="updateClassPreview()">
+ <option value="">No stream (general class)</option>
+ <option value="Science">Science</option>
+ <option value="Commerce">Commerce</option>
+ <option value="Arts">Arts</option>
+ </select>
+ </div>
+ <div class="form-group" id="su-stream-num-group" style="display:none;">
+ <label>Class Number</label>
+ <select id="su-stream-num" onchange="updateClassPreview()">
+ <option value="1">1</option>
+ <option value="2">2</option>
+ <option value="3">3</option>
+ <option value="4">4</option>
+ <option value="5">5</option>
+ </select>
+ </div>
+ </div>
+
+ <div class="form-group">
+ <label>Your Class</label>
+ <input type="text" id="su-class-preview" readonly
+ style="background:#f9fafb;color:var(--primary);font-weight:700;cursor:default;"
+ placeholder="Will be filled automatically">
+ <div class="hint">This is how your class will be saved</div>
+ </div>
+
+ <!-- Student: parent info -->
+ <div id="su-parent-section">
+ <div class="divider">Parent / Guardian Information</div>
+ <div class="form-row">
+ <div class="form-group">
+ <label>Parent Name *</label>
+ <input type="text" id="su-parent-name" placeholder="Parent full name">
+ </div>
+ <div class="form-group">
+ <label>Parent Phone *</label>
+ <input type="text" id="su-parent-phone" placeholder="e.g. 7701234567">
+ </div>
+ </div>
+ <div class="form-group">
+ <label>Parent Email</label>
+ <input type="email" id="su-parent-email" placeholder="parent@email.com">
+ <div class="hint">Parent can use this email to create a Parent account</div>
+ </div>
+ </div>
+
+ <!-- Parent: child info -->
+ <div id="su-child-section" style="display:none;">
+ <div class="divider">Your Child's Information</div>
+ <div class="form-group">
+ <label>Child's Full Name *</label>
+ <input type="text" id="su-child-name" placeholder="Exactly as registered at school">
+ <div class="hint">Must match the name used when the student registered</div>
+ </div>
+ </div>
+
+ <div class="divider">Login Credentials</div>
+
+ <div class="form-row">
+ <div class="form-group">
+ <label>Email *</label>
+ <input type="email" id="su-email" placeholder="your@email.com">
+ </div>
+ <div class="form-group">
+ <label>Password *</label>
+ <input type="password" id="su-pass" placeholder="Min. 6 characters">
+ </div>
+ </div>
+
+ <button class="btn btn-primary btn-full" id="su-btn" onclick="doSignup()" style="margin-top:4px;">Create Account</button>
+ <div class="auth-footer">Already have an account? <a onclick="goLogin('student')">Sign in here</a></div>
+ </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+ <div class="layout">
+
+ <!-- SIDEBAR -->
+ <aside class="sidebar">
+ <div class="sidebar-brand">
+ <div class="brand-inner">
+ <div class="brand-icon">
+ <svg width="22" height="22" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+ <path d="M20 57V31a1 1 0 011-1c6 0 15 2 23 9 8-7 17-9 23-9a1 1 0 011 1v26a1 1 0 01-1 1c-6 0-15 2-23 9-8-7-17-9-23-9a1 1 0 01-1-1z" fill="white"/>
+ <line x1="44" y1="39" x2="44" y2="67" stroke="#1a56db" stroke-width="5"/>
+ <path d="M44 17l2.5 6h6.5l-5.3 3.8 2 6.2L44 29.5l-5.7 3.5 2-6.2L35 22.5l6.5.5z" fill="white"/>
+ </svg>
+ </div>
+ <div>
+ <h2>Lumina Academy</h2>
+ <p>School Portal</p>
+ </div>
+ </div>
+ </div>
+ <div class="sidebar-user">
+ <div class="user-avatar" id="sb-avatar">U</div>
+ <div class="user-info">
+ <div class="user-name" id="sb-name">Loading…</div>
+ <div class="user-role-badge" id="sb-role">—</div>
+ </div>
+ <div class="online-dot"></div>
+ </div>
+ <nav class="sidebar-nav" id="sb-nav"></nav>
+ <div class="sidebar-footer">
+ <button class="btn btn-secondary btn-full btn-sm" onclick="logout()">Sign out</button>
+ </div>
+ </aside>
+
+ <!-- MAIN -->
+ <main class="main">
+ <div class="topbar">
+ <div style="display:flex;align-items:center;gap:10px;">
+ <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
+ <h1 id="page-title">Dashboard</h1>
+ </div>
+ <span class="date-chip" id="today-date"></span>
+ </div>
+ <div class="content">
+
+ <!-- ══ DASHBOARD ══ -->
+ <div class="page active" id="page-dashboard">
+ <div class="stats-grid">
+ <div class="stat-card" style="--sc:#1a56db;--sb:#e8f0fe;">
+  <div class="stat-label">Total Students</div>
+ <div class="stat-value" id="st-students">—</div>
+ <div class="stat-sub">Active enrolments</div>
+ </div>
+ <div class="stat-card" style="--sc:#0e9f6e;--sb:#def7ec;">
+  <div class="stat-label">Present Today</div>
+ <div class="stat-value" id="st-present">—</div>
+ <div class="stat-sub" id="st-absent-sub">— absent</div>
+ </div>
+ <div class="stat-card" id="sc-fees" style="--sc:#c27803;--sb:#fdf6b2;">
+  <div class="stat-label">Fees Collected</div>
+ <div class="stat-value" id="st-fees">—</div>
+ <div class="stat-sub" id="st-fees-sub">of total due</div>
+ </div>
+ <div class="stat-card" id="sc-teachers" style="--sc:#7c3aed;--sb:#ede9fe;">
+  <div class="stat-label">Teachers</div>
+ <div class="stat-value" id="st-teachers">—</div>
+ <div class="stat-sub">Staff members</div>
+ </div>
+ </div>
+ <div class="two-col">
+ <div class="card">
+ <div class="card-header">
+ <span class="card-title">Recent Students</span>
+ <button class="btn btn-primary btn-sm" onclick="showPage('students')">View all</button>
+ </div>
+ <table>
+ <thead><tr><th>Name</th><th>Class</th><th>Status</th></tr></thead>
+ <tbody id="dash-students"></tbody>
+ </table>
+ </div>
+ <div class="card">
+ <div class="card-header">
+ <span class="card-title">Today's Attendance</span>
+ <button class="btn btn-secondary btn-sm" onclick="showPage('attendance')">Take</button>
+ </div>
+ <div class="card-body" id="dash-att"><div class="loading">Loading…</div></div>
+ </div>
+ </div>
+ </div>
+
+ <!-- ══ ATTENDANCE ══ -->
+ <div class="page" id="page-attendance">
+ <div class="sec-hdr">
+ <div class="flex gap-2 items-center">
+ <input type="date" id="att-date" class="search-input" style="width:180px;">
+ <button class="btn btn-secondary btn-sm" onclick="loadAttendance()">Load</button>
+ </div>
+ <button class="btn btn-success" onclick="saveAttendance()">Save Attendance</button>
+ </div>
+ <div class="att-chips" id="att-chips"></div>
+ <div class="att-grid" id="att-grid"><div class="loading">Select a date and click Load</div></div>
+ </div>
+
+ <!-- ══ STUDENTS ══ -->
+ <div class="page" id="page-students">
+ <div id="teacher-no-class-banner" style="display:none;" class="info-banner warn">
+ <span><strong>No class assigned to your account.</strong> Ask an admin to set your class in the Teachers section so you can see your students.</span>
+ </div>
+ <div class="sec-hdr">
+ <input type="text" class="search-input" placeholder=" Search students…" id="stu-search" oninput="filterStudents()" style="width:240px;">
+ <button class="btn btn-primary" onclick="openModal('m-add-student')">+ Add Student</button>
+ </div>
+ <div class="card">
+ <table class="desktop-table">
+ <thead><tr><th>Name</th><th>Class</th><th>Parent</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead>
+ <tbody id="students-tbody"></tbody>
+ </table>
+ <div class="mobile-card-list" id="students-cards"></div>
+ </div>
+ </div>
+
+ <!-- ══ GRADES ══ -->
+ <div class="page" id="page-grades">
+ <div class="sec-hdr">
+ <select class="search-input" id="grades-stu-sel" style="width:260px;" onchange="loadGrades()">
+ <option value="">Select a student…</option>
+ </select>
+ <button class="btn btn-primary" onclick="openModal('m-add-grade')">+ Add Grade</button>
+ </div>
+ <div class="card">
+ <table>
+ <thead><tr><th>Student</th><th>Subject</th><th>Score</th><th>Grade</th><th>Term</th><th>Notes</th></tr></thead>
+ <tbody id="grades-tbody"></tbody>
+ </table>
+ </div>
+ </div>
+
+ <!-- ══ TEACHERS (admin only) ══ -->
+ <div class="page" id="page-teachers">
+ <div id="teacher-no-class-alert" style="display:none;" class="info-banner warn">
+ <span><strong>Some teachers have no class assigned</strong> — they cannot see any students. Click in the Class column to assign one.</span>
+ </div>
+ <div class="sec-hdr">
+ <input type="text" class="search-input" placeholder=" Search teachers…" id="tch-search" oninput="filterTeachers()" style="width:240px;">
+ <button class="btn btn-primary" onclick="openModal('m-add-teacher')">+ Add Teacher</button>
+ </div>
+ <div class="card">
+ <table>
+ <thead><tr><th>Name</th><th>Email</th><th>Class</th><th>Role</th><th>Actions</th></tr></thead>
+ <tbody id="teachers-tbody"></tbody>
+ </table>
+ </div>
+ </div>
+
+ <!-- ══ FEES (admin only) ══ -->
+ <div class="page" id="page-fees">
+ <div class="sec-hdr">
+ <select class="search-input" id="fees-status-filter" onchange="loadFees()" style="width:160px;">
+ <option value="">All statuses</option>
+ <option value="paid">Paid</option>
+ <option value="partial">Partial</option>
+ <option value="unpaid">Unpaid</option>
+ </select>
+ <button class="btn btn-primary" onclick="openModal('m-add-fee')">+ Add Fee Record</button>
+ </div>
+ <div class="card">
+ <div class="card-header">
+ <span class="card-title">Fee Records</span>
+ <span id="fees-summary" style="font-size:12px;color:var(--text-2);"></span>
+ </div>
+ <table>
+ <thead><tr><th>Student</th><th>Term</th><th>Due</th><th>Paid</th><th>Status</th><th>Due Date</th></tr></thead>
+ <tbody id="fees-tbody"></tbody>
+ </table>
+ </div>
+ </div>
+
+ <!-- ══ ACCOUNTS (admin only) ══ -->
+ <div class="page" id="page-accounts">
+ <div id="accounts-unlinked-banner" style="display:none;" class="info-banner warn">
+ <span><strong>Some accounts are not linked to a student record.</strong> Click the Link button next to each unlinked account.</span>
+ </div>
+ <div class="sec-hdr">
+ <span style="font-size:13px;color:var(--text-2);">Student &amp; Parent portal accounts</span>
+ <button class="btn btn-secondary btn-sm" onclick="loadAccounts()">Refresh</button>
+ </div>
+ <div class="card">
+ <table>
+ <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Grade</th><th>Class</th><th>Linked Student</th><th>Actions</th></tr></thead>
+ <tbody id="accounts-tbody"></tbody>
+ </table>
+ </div>
+ </div>
+
+ <!-- ══ ANNOUNCEMENTS (admin only) ══ -->
+ <div class="page" id="page-announcements">
+ <div class="card mb-6">
+ <div class="card-header"><span class="card-title">New Announcement</span></div>
+ <div class="card-body">
+ <div class="form-group"><label>Title</label><input type="text" id="ann-title" placeholder="Announcement title"></div>
+ <div class="form-group"><label>Message</label><textarea id="ann-msg" rows="4" placeholder="Write your announcement…"></textarea></div>
+ <button class="btn btn-primary" onclick="postAnnouncement()">Send to All</button>
+ </div>
+ </div>
+ <div id="anns-list"><div class="loading">Loading…</div></div>
+ </div>
+
+ <!-- ══ AUDIT LOG (admin only) ══ -->
+ <div class="page" id="page-audit">
+ <div class="sec-hdr">
+ <div class="flex gap-2 items-center" style="flex-wrap:wrap;">
+ <select class="search-input" id="audit-entity-filter" onchange="loadAuditLogs()" style="width:170px;">
+ <option value="">All record types</option>
+ <option value="grade">Grades</option>
+ <option value="attendance">Attendance</option>
+ <option value="announcement">Announcements</option>
+ <option value="student">Students</option>
+ <option value="teacher">Teachers</option>
+ <option value="fee">Fees</option>
+ <option value="student_account">Portal Accounts</option>
+ <option value="teacher_class">Teacher Classes</option>
+ <option value="report_card">Report Cards</option>
+ </select>
+ <select class="search-input" id="audit-action-filter" onchange="loadAuditLogs()" style="width:140px;">
+ <option value="">All actions</option>
+ <option value="create">Created</option>
+ <option value="update">Updated</option>
+ <option value="delete">Deleted</option>
+ <option value="send">Sent</option>
+ <option value="view">Viewed</option>
+ </select>
+ </div>
+ <button class="btn btn-secondary btn-sm" onclick="loadAuditLogs()">Refresh</button>
+ </div>
+ <div class="card">
+ <table class="desktop-table">
+ <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Record</th><th>Details</th></tr></thead>
+ <tbody id="audit-tbody"></tbody>
+ </table>
+ <div class="mobile-card-list" id="audit-cards"></div>
+ </div>
+ </div>
+
+ <!-- ══ STUDENT PORTAL ══ -->
+ <div class="page" id="page-student-home">
+ <div class="stats-grid">
+ <div class="stat-card" style="--sc:#1a56db;--sb:#e8f0fe;">
+  <div class="stat-label">Average Score</div>
+ <div class="stat-value" id="sp-avg">—</div>
+ <div class="stat-sub">This term</div>
+ </div>
+ <div class="stat-card" style="--sc:#0e9f6e;--sb:#def7ec;">
+  <div class="stat-label">Attendance Rate</div>
+ <div class="stat-value" id="sp-att">—</div>
+ <div class="stat-sub" id="sp-att-sub">days present</div>
+ </div>
+ <div class="stat-card" style="--sc:#7c3aed;--sb:#ede9fe;">
+  <div class="stat-label">Best Grade</div>
+ <div class="stat-value" id="sp-best">—</div>
+ <div class="stat-sub" id="sp-best-sub">Subject</div>
+ </div>
+ <div class="stat-card" style="--sc:#c27803;--sb:#fdf6b2;">
+  <div class="stat-label">Subjects</div>
+ <div class="stat-value" id="sp-subs">—</div>
+ <div class="stat-sub">Enrolled</div>
+ </div>
+ </div>
+ <div class="two-col">
+ <div class="card">
+ <div class="card-header">
+ <span class="card-title">My Results</span>
+ <button class="btn btn-secondary btn-sm" onclick="openReportCard(currentUser.student_id, currentUser.full_name)">Print Report Card</button>
+ </div>
+ <div class="card-body" id="sp-grades-wrap"><div class="loading">Loading…</div></div>
+ </div>
+ <div class="card">
+ <div class="card-header"><span class="card-title">Attendance History</span></div>
+ <table>
+ <thead><tr><th>Date</th><th>Status</th></tr></thead>
+ <tbody id="sp-att-tbody"></tbody>
+ </table>
+ </div>
+ </div>
+ <div class="card">
+ <div class="card-header"><span class="card-title">School Announcements</span></div>
+ <div class="card-body" id="sp-anns"><div class="loading">Loading…</div></div>
+ </div>
+ </div>
+
+ <!-- ══ PARENT PORTAL ══ -->
+ <div class="page" id="page-parent-home">
+ <div id="par-lookup" class="info-banner info" style="flex-direction:column;gap:10px;">
+ <div>
+ <strong>Find your child</strong><br>
+ <span style="font-size:12px;">Enter the phone number registered with the school.</span>
+ </div>
+ <div style="display:flex;gap:8px;flex-wrap:wrap;">
+ <input type="text" id="par-phone-in" class="search-input" placeholder="e.g. 7701234567" style="flex:1;min-width:160px;" onkeypress="if(event.key==='Enter')searchByPhone()">
+ <button class="btn btn-primary btn-sm" onclick="searchByPhone()">Search</button>
+ </div>
+ <div id="par-phone-err" style="display:none;color:var(--danger);font-size:12px;"></div>
+ </div>
+
+ <div id="par-child-wrap" style="display:none;margin-bottom:18px;">
+ <div class="card-header" style="background:#fff;border-radius:14px;border:1px solid var(--border);margin-bottom:16px;">
+ <span class="card-title">Viewing child:</span>
+ <select class="search-input" id="par-child-sel" onchange="loadChildData()" style="width:260px;"></select>
+ </div>
+ </div>
+
+ <div id="par-content" style="display:none;">
+ <div class="stats-grid">
+ <div class="stat-card" style="--sc:#1a56db;--sb:#e8f0fe;">
+  <div class="stat-label">Average Score</div>
+ <div class="stat-value" id="pp-avg">—</div>
+ <div class="stat-sub">This term</div>
+ </div>
+ <div class="stat-card" style="--sc:#0e9f6e;--sb:#def7ec;">
+  <div class="stat-label">Attendance Rate</div>
+ <div class="stat-value" id="pp-att">—</div>
+ <div class="stat-sub" id="pp-att-sub">—</div>
+ </div>
+ <div class="stat-card" style="--sc:#7c3aed;--sb:#ede9fe;">
+  <div class="stat-label">Best Subject</div>
+ <div class="stat-value" id="pp-best">—</div>
+ <div class="stat-sub" id="pp-best-sub">Grade</div>
+ </div>
+ <div class="stat-card" style="--sc:#c27803;--sb:#fdf6b2;">
+  <div class="stat-label">Fee Status</div>
+ <div class="stat-value" id="pp-fee">—</div>
+ <div class="stat-sub" id="pp-fee-sub">—</div>
+ </div>
+ </div>
+ <div class="two-col">
+ <div class="card">
+ <div class="card-header">
+ <span class="card-title">Academic Results</span>
+ <button class="btn btn-secondary btn-sm" onclick="openReportCard(document.getElementById('par-child-sel').value, document.getElementById('par-child-sel').selectedOptions[0]?.textContent || 'Student')">Print Report Card</button>
+ </div>
+ <table>
+ <thead><tr><th>Subject</th><th>Score</th><th>Grade</th><th>Term</th></tr></thead>
+ <tbody id="pp-grades"></tbody>
+ </table>
+ </div>
+ <div class="card">
+ <div class="card-header"><span class="card-title">Attendance Record</span></div>
+ <table>
+ <thead><tr><th>Date</th><th>Status</th></tr></thead>
+ <tbody id="pp-att-tbody"></tbody>
+ </table>
+ </div>
+ </div>
+ <div class="card">
+ <div class="card-header"><span class="card-title">Announcements</span></div>
+ <div class="card-body" id="pp-anns"><div class="loading">Loading…</div></div>
+ </div>
+ </div>
+ </div>
+
+ </div><!-- /content -->
+ </main>
+ </div>
+</div>
+
+<!-- Sidebar overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<!-- Bottom Nav (mobile) -->
+<div class="bottom-nav" id="bottom-nav">
+ <div class="bottom-nav-inner" id="bottom-nav-inner"></div>
+</div>
+
+<!-- ══ MODALS ══ -->
+
+<!-- Add Student -->
+<div class="modal-overlay" id="m-add-student">
+ <div class="modal">
+ <div class="modal-header"><h2>Add Student</h2><button class="modal-close" onclick="closeModal('m-add-student')">Close</button></div>
+ <div class="form-group"><label>Full Name *</label><input type="text" id="ms-name" placeholder="Student full name"></div>
+ <div class="form-row">
+ <div class="form-group"><label>Class *</label><input type="text" id="ms-class" placeholder="e.g. Grade 7"></div>
+ <div class="form-group"><label>Gender</label>
+ <select id="ms-gender"><option value="">Select…</option><option value="male">Male</option><option value="female">Female</option></select>
+ </div>
+ </div>
+ <div class="form-group"><label>Date of Birth</label><input type="date" id="ms-dob"></div>
+ <div class="form-group"><label>Parent Name</label><input type="text" id="ms-pname" placeholder="Parent full name"></div>
+ <div class="form-row">
+ <div class="form-group"><label>Parent Phone</label><input type="text" id="ms-pphone" placeholder="e.g. 7701234"></div>
+ <div class="form-group"><label>Parent Email</label><input type="email" id="ms-pemail" placeholder="parent@email.com"></div>
+ </div>
+ <div class="flex gap-2" style="justify-content:flex-end;margin-top:4px;">
+ <button class="btn btn-secondary" onclick="closeModal('m-add-student')">Cancel</button>
+ <button class="btn btn-primary" onclick="addStudent()">Add Student</button>
+ </div>
+ </div>
+</div>
+
+<!-- Add Teacher -->
+<div class="modal-overlay" id="m-add-teacher">
+ <div class="modal">
+ <div class="modal-header"><h2>Add Teacher</h2><button class="modal-close" onclick="closeModal('m-add-teacher')">Close</button></div>
+ <div class="form-group"><label>Full Name *</label><input type="text" id="mt-name" placeholder="Teacher full name"></div>
+ <div class="form-group"><label>Email *</label><input type="email" id="mt-email" placeholder="teacher@school.com"></div>
+ <div class="form-group"><label>Password *</label><input type="password" id="mt-pass" placeholder="Set a password"></div>
+ <div class="form-row">
+ <div class="form-group"><label>Class</label><input type="text" id="mt-class" placeholder="e.g. Grade 7"></div>
+ <div class="form-group"><label>Role</label>
+ <select id="mt-role"><option value="teacher">Teacher</option><option value="principal">Principal</option><option value="admin">Admin</option></select>
+ </div>
+ </div>
+ <div class="flex gap-2" style="justify-content:flex-end;margin-top:4px;">
+ <button class="btn btn-secondary" onclick="closeModal('m-add-teacher')">Cancel</button>
+ <button class="btn btn-primary" onclick="addTeacher()">Add Teacher</button>
+ </div>
+ </div>
+</div>
+
+<!-- Add Grade -->
+<div class="modal-overlay" id="m-add-grade">
+ <div class="modal">
+ <div class="modal-header"><h2>Add Grade</h2><button class="modal-close" onclick="closeModal('m-add-grade')">Close</button></div>
+ <div class="form-group"><label>Student *</label><select id="mg-stu"></select></div>
+ <div class="form-row">
+ <div class="form-group"><label>Subject *</label><input type="text" id="mg-sub" placeholder="e.g. Mathematics"></div>
+ <div class="form-group"><label>Score (%)</label><input type="number" id="mg-score" min="0" max="100" placeholder="0–100"></div>
+ </div>
+ <div class="form-row">
+ <div class="form-group"><label>Grade</label>
+ <select id="mg-grade"><option value="">—</option><option>A+</option><option>A</option><option>B+</option><option>B</option><option>C+</option><option>C</option><option>D</option><option>F</option></select>
+ </div>
+ <div class="form-group"><label>Term</label>
+ <select id="mg-term"><option value="">—</option><option>Term 1</option><option>Term 2</option><option>Term 3</option></select>
+ </div>
+ </div>
+ <div class="form-row">
+ <div class="form-group"><label>Academic Year</label><input type="text" id="mg-year" placeholder="2025/2026"></div>
+ </div>
+ <div class="form-group"><label>Notes</label><textarea id="mg-notes" rows="2" placeholder="Optional…"></textarea></div>
+ <div class="flex gap-2" style="justify-content:flex-end;margin-top:4px;">
+ <button class="btn btn-secondary" onclick="closeModal('m-add-grade')">Cancel</button>
+ <button class="btn btn-primary" onclick="addGrade()">Save Grade</button>
+ </div>
+ </div>
+</div>
+
+<!-- Add Fee -->
+<div class="modal-overlay" id="m-add-fee">
+ <div class="modal">
+ <div class="modal-header"><h2>Add Fee Record</h2><button class="modal-close" onclick="closeModal('m-add-fee')">Close</button></div>
+ <div class="form-group"><label>Student *</label><select id="mf-stu"></select></div>
+ <div class="form-row">
+ <div class="form-group"><label>Term *</label><input type="text" id="mf-term" placeholder="e.g. Term 1"></div>
+ <div class="form-group"><label>Academic Year</label><input type="text" id="mf-year" placeholder="2025/2026"></div>
+ </div>
+ <div class="form-row">
+ <div class="form-group"><label>Amount Due (D) *</label><input type="number" id="mf-amount" placeholder="0.00"></div>
+ <div class="form-group"><label>Due Date</label><input type="date" id="mf-due"></div>
+ </div>
+ <div class="flex gap-2" style="justify-content:flex-end;margin-top:4px;">
+ <button class="btn btn-secondary" onclick="closeModal('m-add-fee')">Cancel</button>
+ <button class="btn btn-primary" onclick="addFee()">Add Record</button>
+ </div>
+ </div>
+</div>
+
+<!-- Add Teacher Class Modal -->
+<div class="modal-overlay" id="m-add-teacher-class">
+ <div class="modal">
+ <div class="modal-header">
+ <h2 id="add-class-modal-title">Add Class</h2>
+ <button class="modal-close" onclick="closeModal('m-add-teacher-class')">Close</button>
+ </div>
+ <div class="form-group">
+ <label>Grade *</label>
+ <select id="add-class-grade" onchange="updateAddClassPreview()">
+ <option value="">Select grade...</option>
+ <option value="1">Grade 1</option><option value="2">Grade 2</option>
+ <option value="3">Grade 3</option><option value="4">Grade 4</option>
+ <option value="5">Grade 5</option><option value="6">Grade 6</option>
+ <option value="7">Grade 7</option><option value="8">Grade 8</option>
+ <option value="9">Grade 9</option><option value="10">Grade 10</option>
+ <option value="11">Grade 11</option><option value="12">Grade 12</option>
+ </select>
+ </div>
+ <div class="form-group">
+ <label>Stream<span style="color:var(--text-2);font-weight:400;">(optional)</span></label>
+ <select id="add-class-stream" onchange="updateAddClassPreview()">
+ <option value="">No stream</option>
+ <option value="Science">Science</option>
+ <option value="Commerce">Commerce</option>
+ <option value="Arts">Arts</option>
+ </select>
+ </div>
+ <div class="form-group" id="add-class-stream-num" style="display:none;">
+ <label>Class Number</label>
+ <select id="add-class-num" onchange="updateAddClassPreview()">
+ <option value="1">1</option><option value="2">2</option>
+ <option value="3">3</option><option value="4">4</option>
+ <option value="5">5</option>
+ </select>
+ </div>
+ <div class="form-group">
+ <label>Class Name Preview</label>
+ <input type="text" id="add-class-preview" readonly
+ style="background:#f9fafb;color:var(--primary);font-weight:700;"
+ placeholder="Select grade above...">
+ </div>
+ <div class="flex gap-2" style="justify-content:flex-end;">
+ <button class="btn btn-secondary" onclick="closeModal('m-add-teacher-class')">Cancel</button>
+ <button class="btn btn-primary" onclick="saveTeacherClass()">+ Add Class</button>
+ </div>
+ </div>
+</div>
+
+<!-- Link Account Modal -->
+<div class="modal-overlay" id="m-link-account">
+ <div class="modal">
+ <div class="modal-header">
+ <h2 id="link-modal-title">Link Account</h2>
+ <button class="modal-close" onclick="closeModal('m-link-account')">Close</button>
+ </div>
+ <div class="info-banner info" style="margin-bottom:16px;">
+ <span id="link-modal-hint">Select the matching student record.</span>
+ </div>
+ <div class="form-group">
+ <label>Select Student Record *</label>
+ <select id="link-student-sel" style="width:100%;"></select>
+ </div>
+ <div class="flex gap-2" style="justify-content:flex-end;margin-top:4px;">
+ <button class="btn btn-secondary" onclick="closeModal('m-link-account')">Cancel</button>
+ <button class="btn btn-primary" onclick="linkAccount()">Link Account</button>
+ </div>
+ </div>
+</div>
+
+<script>const API = 'https://school-bot-api-production.up.railway.app';
+let token = localStorage.getItem('school_token');
+let currentUser = JSON.parse(localStorage.getItem('school_user') || 'null');
+let allStudents = [], allTeachers = [], attendanceMap = {};
+
+// ── DATE ──
+document.getElementById('today-date').textContent =
+ new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+document.getElementById('att-date').value = new Date().toISOString().split('T')[0];
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(o =>o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); })
+);
+
+// ── INIT ──
+if (token && currentUser) {
+ hideAllAuth();
+ showApp();
+} else {
+ showAuthPage('pg-roles');
+}
+
+function hideAllAuth() {
+ document.querySelectorAll('.auth-page').forEach(p =>p.classList.remove('active'));
+}
+
+function showAuthPage(id) {
+ hideAllAuth();
+ document.getElementById(id).classList.add('active');
+ document.getElementById('app').style.display = 'none';
+}
+
+// ── NAVIGATION BETWEEN AUTH PAGES ──
+function goRoles() { showAuthPage('pg-roles'); }
+
+// ── BUG FIX 1: Removed reference to non-existent 'login-icon' element ──
+function goLogin(role) {
+ const cfgs = {
+ admin: {title:'Admin Sign In', sub:'Full access to all management features'},
+ teacher: {title:'Teacher Sign In', sub:'Access your class, attendance & grades'},
+ student: {title:'Student Sign In', sub:'View your results and attendance'},
+ parent: {title:'Parent Sign In', sub:'Monitor your child\'s progress'},
+ };
+ const c = cfgs[role] || cfgs.admin;
+ document.getElementById('login-title').textContent = c.title;
+ document.getElementById('login-sub').textContent = c.sub;
+ // Show signup link for student/parent
+ document.getElementById('login-footer-signup').style.display =
+ ['student','parent'].includes(role) ? 'block' : 'none';
+ document.getElementById('login-err').style.display = 'none';
+ showAuthPage('pg-login');
+}
+
+function goSignup() { showAuthPage('pg-signup'); }
+
+// ── CLASS PREVIEW (signup form) ──
+function updateClassPreview() {
+ const gradeNum = document.getElementById('su-grade').value;
+ const stream = document.getElementById('su-stream').value;
+ const streamNum = document.getElementById('su-stream-num').value;
+ document.getElementById('su-stream-num-group').style.display = stream ? 'block' : 'none';
+ let cls = gradeNum ? `Grade ${gradeNum}` : '';
+ if (stream) cls += ` ${stream} ${streamNum}`;
+ document.getElementById('su-class-preview').value = cls;
+}
+
+function toggleSignupRole() {
+ const r = document.getElementById('su-role').value;
+ document.getElementById('su-parent-section').style.display = r === 'student' ? 'block' : 'none';
+ document.getElementById('su-child-section').style.display = r === 'parent' ? 'block' : 'none';
+}
+
+// ── LOGIN ──
+async function doLogin() {
+ const email = document.getElementById('li-email').value.trim();
+ const pass = document.getElementById('li-pass').value;
+ const btn = document.getElementById('li-btn');
+ const err = document.getElementById('login-err');
+ err.style.display = 'none';
+
+ if (!email || !pass) { showErr(err, 'Please enter email and password'); return; }
+ btn.textContent = 'Signing in…'; btn.disabled = true;
+
+ try {
+ const res = await fetch(`${API}/auth/login`, {
+ method:'POST', headers:{'Content-Type':'application/json'},
+ body: JSON.stringify({email, password:pass})
+ });
+ const data = await res.json();
+ if (!res.ok) { showErr(err, data.error || 'Invalid email or password'); return; }
+
+ token = data.token;
+ currentUser = data.user || data.teacher;
+ localStorage.setItem('school_token', token);
+ localStorage.setItem('school_user', JSON.stringify(currentUser));
+ hideAllAuth();
+ showApp();
+ } catch(e) {
+ showErr(err, 'Connection failed. Check your internet.');
+ } finally {
+ btn.textContent = 'Sign In'; btn.disabled = false;
+ }
+}
+
+// ── BUG FIX 2: Removed duplicate const declarations in doSignup ──
+async function doSignup() {
+ const role = document.getElementById('su-role').value;
+ const full_name = document.getElementById('su-name').value.trim();
+ const email = document.getElementById('su-email').value.trim();
+ const pass = document.getElementById('su-pass').value;
+ const gradeNum = document.getElementById('su-grade').value;
+ const stream = document.getElementById('su-stream').value;
+ const streamNum = document.getElementById('su-stream-num').value;
+ const gender = document.getElementById('su-gender').value;
+ const parentName = document.getElementById('su-parent-name').value.trim();
+ const parentPhone = document.getElementById('su-parent-phone').value.trim();
+ const parentEmail = document.getElementById('su-parent-email').value.trim();
+ const childName = document.getElementById('su-child-name').value.trim();
+
+ // Build normalized class name
+ let grade = gradeNum ? `Grade ${gradeNum}` : '';
+ let cls = grade;
+ if (stream) cls += ` ${stream} ${streamNum}`;
+
+ const err = document.getElementById('su-err');
+ const ok = document.getElementById('su-ok');
+ err.style.display = 'none'; ok.style.display = 'none';
+
+ // Validation
+ if (!full_name) { showErr(err,'Please enter your full name'); return; }
+ if (!grade) { showErr(err,'Please select your grade'); return; }
+ if (!email) { showErr(err,'Please enter your email'); return; }
+ if (pass.length< 6) { showErr(err,'Password must be at least 6 characters'); return; }
+ if (role === 'student' && !parentName) { showErr(err,'Please enter your parent\'s name'); return; }
+ if (role === 'student' && !parentPhone) { showErr(err,'Please enter your parent\'s phone number'); return; }
+ if (role === 'parent' && !childName) { showErr(err,'Please enter your child\'s full name'); return; }
+
+ const btn = document.getElementById('su-btn');
+ btn.textContent = 'Creating account…'; btn.disabled = true;
+
+ try {
+ const body = {
+ full_name,
+ email,
+ password: pass,
+ role,
+ grade,
+ class: cls,
+ gender,
+ parent_name: role === 'student' ? parentName : undefined,
+ parent_phone: role === 'student' ? parentPhone : undefined,
+ parent_email: role === 'student' ? parentEmail : undefined,
+ student_name: role === 'parent' ? childName : undefined,
+ };
+
+ const res = await fetch(`${API}/auth/register/student`, {
+ method:'POST', headers:{'Content-Type':'application/json'},
+ body: JSON.stringify(body)
+ });
+ const data = await res.json();
+
+ if (!res.ok) { showErr(err, data.error || 'Failed to create account'); return; }
+
+ if (data.linked) {
+ ok.textContent = ' Account created! Logging you in…';
+ ok.style.background = 'var(--success-light)';
+ ok.style.color = 'var(--success)';
+ } else {
+ ok.textContent = ' Account created but not fully linked. Contact your admin.';
+ ok.style.background = '#fef3c7';
+ ok.style.color = '#92400e';
+ }
+ ok.style.display = 'block';
+
+ token = data.token;
+ currentUser = data.user;
+ localStorage.setItem('school_token', token);
+ localStorage.setItem('school_user', JSON.stringify(currentUser));
+ setTimeout(() => { hideAllAuth(); showApp(); }, 1200);
+
+ } catch(e) {
+ showErr(err, 'Connection failed. Check your internet.');
+ } finally {
+ btn.textContent = 'Create Account'; btn.disabled = false;
+ }
+}
+
+function logout() {
+ localStorage.removeItem('school_token');
+ localStorage.removeItem('school_user');
+ location.reload();
+}
+
+// ── MOBILE SIDEBAR ──
+function toggleSidebar() {
+ const sb = document.querySelector('.sidebar');
+ const overlay = document.getElementById('sidebar-overlay');
+ sb.classList.toggle('open');
+ overlay.classList.toggle('open');
+}
+function closeSidebar() {
+ document.querySelector('.sidebar')?.classList.remove('open');
+ document.getElementById('sidebar-overlay')?.classList.remove('open');
+}
+
+// ── BOTTOM NAV ──
+const BOTTOM_NAV_CFG = {
+ admin: [
+ {id:'dashboard',icon:'',lbl:'Home'},
+ {id:'students', icon:'',lbl:'Students'},
+ {id:'attendance',icon:'',lbl:'Attend'},
+ {id:'grades', icon:'',lbl:'Grades'},
+ {more:true, items:[
+ {id:'teachers', icon:'',lbl:'Teachers'},
+ {id:'fees', icon:'',lbl:'Fees'},
+ {id:'accounts', icon:'',lbl:'Accounts'},
+ {id:'announcements',icon:'',lbl:'Announce'},
+ {id:'audit', icon:'',lbl:'Audit Log'},
+ ]}
+ ],
+ principal: [
+ {id:'dashboard',icon:'',lbl:'Home'},
+ {id:'students', icon:'',lbl:'Students'},
+ {id:'attendance',icon:'',lbl:'Attend'},
+ {id:'grades', icon:'',lbl:'Grades'},
+ {more:true, items:[
+ {id:'teachers', icon:'',lbl:'Teachers'},
+ {id:'fees', icon:'',lbl:'Fees'},
+ {id:'accounts', icon:'',lbl:'Accounts'},
+ {id:'announcements',icon:'',lbl:'Announce'},
+ {id:'audit', icon:'',lbl:'Audit Log'},
+ ]}
+ ],
+ teacher: [
+ {id:'dashboard', icon:'',lbl:'Home'},
+ {id:'students', icon:'',lbl:'Students'},
+ {id:'attendance',icon:'',lbl:'Attend'},
+ {id:'grades', icon:'',lbl:'Grades'},
+ ],
+ student:[{id:'student-home',icon:'',lbl:'Home'}],
+ parent: [{id:'parent-home', icon:'',lbl:'Home'}],
+};
+
+function buildBottomNav(role) {
+ const cfg = BOTTOM_NAV_CFG[role] || BOTTOM_NAV_CFG.teacher;
+ const inner = document.getElementById('bottom-nav-inner');
+ inner.innerHTML = cfg.map(item => {
+ if (item.more) {
+ return `
+ <button class="bn-item bn-more" onclick="toggleMoreMenu(event)">
+ <span class="bn-icon">⋯</span>More<div class="bn-more-menu" id="bn-more-menu">
+ ${item.items.map(i=>`
+ <button class="bn-more-item" id="bn-more-${i.id}"
+ onclick="showPage('${i.id}');document.getElementById('bn-more-menu').classList.remove('open')">
+ ${i.icon} ${i.lbl}
+ </button>`).join('')}
+ </div>
+ </button>`;
+ }
+ return `<button class="bn-item" id="bn-${item.id}" onclick="showPage('${item.id}')">
+ <span class="bn-icon">${item.icon}</span>${item.lbl}
+ </button>`;
+ }).join('');
+}
+
+function toggleMoreMenu(e) {
+ e.stopPropagation();
+ document.getElementById('bn-more-menu')?.classList.toggle('open');
+}
+
+document.addEventListener('click', () => {
+ document.getElementById('bn-more-menu')?.classList.remove('open');
+});
+
+function updateBottomNav(page) {
+ document.querySelectorAll('.bn-item').forEach(b =>b.classList.remove('active'));
+ document.querySelectorAll('.bn-more-item').forEach(b =>b.classList.remove('active'));
+ const bn = document.getElementById(`bn-${page}`);
+ if (bn) bn.classList.add('active');
+ const bm = document.getElementById(`bn-more-${page}`);
+ if (bm) bm.classList.add('active');
+}
+
+// ── API helper ──
+async function api(path, opts={}) {
+ try {
+ const res = await fetch(`${API}${path}`, {
+ ...opts,
+ headers: {
+ 'Content-Type':'application/json',
+ 'Authorization':`Bearer ${token}`,
+ ...opts.headers
+ }
+ });
+ if (res.status === 401) { logout(); return null; }
+ return res.json();
+ } catch(e) {
+ console.error('API:', e); return null;
+ }
+}
+
+// ── SIDEBAR NAV CONFIG ──
+const NAV = {
+ admin: [
+ {s:'Main'},{id:'dashboard',icon:'',lbl:'Dashboard'},
+ {id:'attendance',icon:'',lbl:'Attendance'},
+ {id:'students',icon:'',lbl:'Students'},
+ {id:'grades',icon:'',lbl:'Grades'},
+ {s:'Admin'},
+ {id:'teachers',icon:'',lbl:'Teachers'},
+ {id:'fees',icon:'',lbl:'Fees'},
+ {id:'accounts',icon:'',lbl:'Portal Accounts'},
+ {id:'announcements',icon:'',lbl:'Announcements'},
+ {id:'audit',icon:'',lbl:'Audit Log'},
+ ],
+ principal: [
+ {s:'Main'},{id:'dashboard',icon:'',lbl:'Dashboard'},
+ {id:'attendance',icon:'',lbl:'Attendance'},
+ {id:'students',icon:'',lbl:'Students'},
+ {id:'grades',icon:'',lbl:'Grades'},
+ {s:'Management'},
+ {id:'teachers',icon:'',lbl:'Teachers'},
+ {id:'fees',icon:'',lbl:'Fees'},
+ {id:'accounts',icon:'',lbl:'Portal Accounts'},
+ {id:'announcements',icon:'',lbl:'Announcements'},
+ {id:'audit',icon:'',lbl:'Audit Log'},
+ ],
+ teacher: [
+ {s:'My Classroom'},
+ {id:'dashboard',icon:'',lbl:'Dashboard'},
+ {id:'attendance',icon:'',lbl:'Attendance'},
+ {id:'students',icon:'',lbl:'Students'},
+ {id:'grades',icon:'',lbl:'Grades'},
+ ],
+ student: [{s:'My Portal'},{id:'student-home',icon:'',lbl:'My Dashboard'}],
+ parent: [{s:'Parent Portal'},{id:'parent-home',icon:'',lbl:'My Dashboard'}],
+};
+
+function buildSidebar(role) {
+ const nav = document.getElementById('sb-nav');
+ const cfg = NAV[role] || NAV.teacher;
+ nav.innerHTML = cfg.map(i =>i.s
+ ? `<div class="nav-section">${i.s}</div>`
+ : `<div class="nav-item" id="nav-${i.id}" onclick="showPage('${i.id}')">
+ <span class="nav-icon">${i.icon}</span>${i.lbl}
+ </div>`
+ ).join('');
+}
+
+// ── SHOW APP ──
+function showApp() {
+ hideAllAuth();
+ document.getElementById('app').style.display = 'block';
+
+ const name = currentUser.full_name || 'User';
+ const role = currentUser.role || 'teacher';
+
+ document.getElementById('sb-name').textContent = name;
+ document.getElementById('sb-role').textContent = role.charAt(0).toUpperCase()+role.slice(1);
+ document.getElementById('sb-avatar').textContent = name.charAt(0).toUpperCase();
+
+ buildSidebar(role);
+ buildBottomNav(role);
+
+ if (role === 'student') {
+ showPage('student-home'); loadStudentPortal();
+ } else if (role === 'parent') {
+ showPage('parent-home'); loadParentPortal();
+ } else {
+ showPage('dashboard'); loadDashboard(); loadStudents();
+ }
+}
+
+// ── NAVIGATION ──
+const PAGE_TITLES = {
+ dashboard:'Dashboard', attendance:'Attendance', students:'Students',
+ grades:'Grades', teachers:'Teachers', fees:'Fees',
+ accounts:'Portal Accounts', announcements:'Announcements', audit:'Audit Log',
+ 'student-home':'My Dashboard', 'parent-home':'Parent Dashboard'
+};
+
+function showPage(page) {
+ const role = currentUser?.role;
+ const adminOnly = ['teachers','fees','accounts','announcements','audit'];
+ if (role === 'teacher' && adminOnly.includes(page)) {
+ toast('You do not have permission to view this page','e'); return;
+ }
+
+ document.querySelectorAll('.page').forEach(p =>p.classList.remove('active'));
+ document.querySelectorAll('.nav-item').forEach(n =>n.classList.remove('active'));
+ const pe = document.getElementById(`page-${page}`);
+ if (pe) pe.classList.add('active');
+ const ne = document.getElementById(`nav-${page}`);
+ if (ne) ne.classList.add('active');
+ document.getElementById('page-title').textContent = PAGE_TITLES[page] || page;
+
+ closeSidebar();
+ updateBottomNav(page);
+
+ if (page==='attendance') loadAttendance();
+ if (page==='teachers') loadTeachers();
+ if (page==='fees') loadFees();
+ if (page==='accounts') loadAccounts();
+ if (page==='announcements') loadAnnouncements();
+ if (page==='grades') populateStudentSelects();
+ if (page==='audit') loadAuditLogs();
+}
+
+// ── DASHBOARD ──
+async function loadDashboard() {
+ const isAdmin = ['admin','principal'].includes(currentUser.role);
+
+ if (isAdmin) {
+ const stats = await api('/stats');
+ if (stats) {
+ document.getElementById('st-students').textContent = stats.total_students || 0;
+ document.getElementById('st-present').textContent = stats.today_attendance?.present || 0;
+ document.getElementById('st-absent-sub').textContent = `${stats.today_attendance?.absent||0} absent`;
+ document.getElementById('st-teachers').textContent = stats.total_teachers || 0;
+ const paid = parseFloat(stats.fees?.total_paid||0);
+ const due = parseFloat(stats.fees?.total_due||0);
+ document.getElementById('st-fees').textContent = `D${paid.toLocaleString()}`;
+ document.getElementById('st-fees-sub').textContent = `of D${due.toLocaleString()} total`;
+ }
+ } else {
+ document.getElementById('sc-fees').style.display = 'none';
+ document.getElementById('sc-teachers').style.display = 'none';
+ document.getElementById('st-students').textContent = allStudents.length || '—';
+ }
+
+ const today = new Date().toISOString().split('T')[0];
+ const attData = await api(`/attendance?date=${today}`);
+ const dashAtt = document.getElementById('dash-att');
+ if (attData && attData.length) {
+ const present = attData.filter(a=>a.status==='present').length;
+ const absent = attData.filter(a=>a.status==='absent').length;
+ const total = present + absent;
+ const pct = total ? Math.round(present/total*100) : 0;
+ if (!['admin','principal'].includes(currentUser.role)) {
+ document.getElementById('st-present').textContent = present;
+ document.getElementById('st-absent-sub').textContent = `${absent} absent`;
+ }
+ dashAtt.innerHTML = `
+ <div style="margin-bottom:12px;">
+ <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+ <span style="font-size:13px;font-weight:600;">Present ${present}/${total}</span>
+ <span style="font-size:13px;font-weight:700;color:var(--success);">${pct}%</span>
+ </div>
+ <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:var(--success);"></div></div>
+ </div>
+ <div class="att-chips" style="margin-bottom:0;">
+ <div class="att-chip p"> ${present} Present</div>
+ <div class="att-chip a"> ${absent} Absent</div>
+ </div>`;
+ } else {
+ dashAtt.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-2);font-size:13px;">No attendance recorded today</div>`;
+ }
+
+ const tbody = document.getElementById('dash-students');
+ if (!allStudents.length) {
+ const isTeacher = currentUser.role === 'teacher';
+ tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-2);font-size:13px;">
+ ${isTeacher ? ' No students — your class may not be set. Contact an admin.' : 'No students yet'}
+ </td></tr>`;
+ } else {
+ tbody.innerHTML = allStudents.slice(0,8).map(s=>`
+ <tr>
+ <td><strong>${s.full_name}</strong></td>
+ <td><span class="badge badge-blue">${s.class||'—'}</span></td>
+ <td><span class="badge ${s.status==='active'||!s.status?'badge-green':'badge-gray'}">${s.status||'active'}</span></td>
+ </tr>`).join('');
+ }
+}
+
+// ── STUDENTS ──
+async function loadStudents() {
+ const data = await api('/students');
+ if (!data) return;
+ allStudents = data;
+
+ const banner = document.getElementById('teacher-no-class-banner');
+ if (banner) banner.style.display = (data.length===0 && currentUser.role==='teacher') ? 'block' : 'none';
+
+ renderStudents(allStudents);
+ populateStudentSelects();
+ if (currentUser.role==='teacher') document.getElementById('st-students').textContent = data.length;
+}
+
+function renderStudents(list) {
+ const tbody = document.getElementById('students-tbody');
+ const cards = document.getElementById('students-cards');
+ const empty = `<div class="empty"><h3>No students</h3><p>Add your first student to get started</p></div>`;
+
+ if (!list.length) {
+ if(tbody) tbody.innerHTML = `<tr><td colspan="6">${empty}</td></tr>`;
+ if(cards) cards.innerHTML = empty;
+ return;
+ }
+
+ if(tbody) tbody.innerHTML = list.map(s=>`
+ <tr>
+ <td><strong>${s.full_name}</strong></td>
+ <td><span class="badge badge-blue">${s.class||'—'}</span></td>
+ <td>${s.parent_name||'—'}</td>
+ <td>${s.parent_phone||'—'}</td>
+ <td><span class="badge ${s.status==='active'||!s.status?'badge-green':'badge-gray'}">${s.status||'active'}</span></td>
+ <td>
+ <div class="flex gap-2">
+ <button class="btn btn-secondary btn-sm" onclick="viewNotes(${s.id},'${esc(s.full_name)}')">Notes</button>
+ <button class="btn btn-secondary btn-sm" onclick="openReportCard(${s.id},'${esc(s.full_name)}')">Report Card</button>
+ </div>
+ </td>
+ </tr>`).join('');
+
+ if(cards) cards.innerHTML = list.map(s=>`
+ <div class="m-card">
+ <div class="m-card-row">
+ <span style="font-size:15px;font-weight:700;">${s.full_name}</span>
+ <span class="badge ${s.status==='active'||!s.status?'badge-green':'badge-gray'}">${s.status||'active'}</span>
+ </div>
+ <div class="m-card-row">
+ <span class="m-card-label">Class</span>
+ <span class="m-card-val"><span class="badge badge-blue">${s.class||'—'}</span></span>
+ </div>
+ <div class="m-card-row">
+ <span class="m-card-label">Parent</span>
+ <span class="m-card-val">${s.parent_name||'—'}</span>
+ </div>
+ <div class="m-card-row">
+ <span class="m-card-label">Phone</span>
+ <span class="m-card-val">${s.parent_phone?`<a href="tel:${s.parent_phone}" style="color:var(--primary);">${s.parent_phone}</a>`:'—'}</span>
+ </div>
+ <div class="m-card-actions">
+ <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="viewNotes(${s.id},'${esc(s.full_name)}')">Notes</button>
+ <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="openReportCard(${s.id},'${esc(s.full_name)}')">Report Card</button>
+ </div>
+ </div>`).join('');
+}
+
+function filterStudents() {
+ const q = document.getElementById('stu-search').value.toLowerCase();
+ renderStudents(allStudents.filter(s=>s.full_name.toLowerCase().includes(q)||
+ (s.class||'').toLowerCase().includes(q)||
+ (s.parent_name||'').toLowerCase().includes(q)
+ ));
+}
+
+async function addStudent() {
+ const body = {
+ full_name: document.getElementById('ms-name').value.trim(),
+ class: document.getElementById('ms-class').value.trim(),
+ gender: document.getElementById('ms-gender').value,
+ date_of_birth:document.getElementById('ms-dob').value||null,
+ parent_name: document.getElementById('ms-pname').value.trim(),
+ parent_phone: document.getElementById('ms-pphone').value.trim(),
+ parent_email: document.getElementById('ms-pemail').value.trim(),
+ };
+ if (!body.full_name) { toast('Please enter student name','e'); return; }
+ const r = await api('/students',{method:'POST',body:JSON.stringify(body)});
+ if (r?.error) { toast(r.error,'e'); return; }
+ closeModal('m-add-student');
+ ['ms-name','ms-class','ms-pname','ms-pphone','ms-pemail'].forEach(id=>document.getElementById(id).value='');
+ await loadStudents(); await loadDashboard();
+ toast('Student added!','s');
+}
+
+function populateStudentSelects() {
+ ['mg-stu','mf-stu'].forEach(id=>{
+ const el = document.getElementById(id);
+ if(el) el.innerHTML = '<option value="">Select student…</option>'+
+ allStudents.map(s=>`<option value="${s.id}">${s.full_name} (${s.class||'—'})</option>`).join('');
+ });
+ const gs = document.getElementById('grades-stu-sel');
+ if(gs) gs.innerHTML = '<option value="">Select a student…</option>'+
+ allStudents.map(s=>`<option value="${s.id}">${s.full_name} (${s.class||'—'})</option>`).join('');
+}
+
+// ── ATTENDANCE ──
+async function loadAttendance() {
+ const date = document.getElementById('att-date').value;
+ if(!date) return;
+ const [studs,existing] = await Promise.all([api('/students'), api(`/attendance?date=${date}`)]);
+ if(!studs) return;
+ allStudents = studs;
+ attendanceMap = {};
+ if(existing) existing.forEach(a=>{ attendanceMap[a.student_id]=a.status; });
+ renderAttChips();
+ const grid = document.getElementById('att-grid');
+ if(!studs.length){grid.innerHTML='<div class="loading">No students found</div>';return;}
+ grid.innerHTML = studs.map(s=>`
+ <div class="att-card ${attendanceMap[s.id]==='present'?'is-present':attendanceMap[s.id]==='absent'?'is-absent':''}" id="ac-${s.id}">
+ <div><h4>${s.full_name}</h4><p>${s.class||'No class'}</p></div>
+ <div class="att-toggle">
+ <button class="att-btn p ${attendanceMap[s.id]==='present'?'active':''}" onclick="setAtt(${s.id},'present',this)">Present</button>
+ <button class="att-btn a ${attendanceMap[s.id]==='absent'?'active':''}" onclick="setAtt(${s.id},'absent',this)">Absent</button>
+ </div>
+ </div>`).join('');
+}
+
+function setAtt(id,status,btn) {
+ attendanceMap[id]=status;
+ const card=btn.closest('.att-card');
+ card.querySelectorAll('.att-btn').forEach(b=>b.classList.remove('active'));
+ btn.classList.add('active');
+ card.className=`att-card is-${status}`;
+ renderAttChips();
+}
+
+function renderAttChips() {
+ const present=Object.values(attendanceMap).filter(s=>s==='present').length;
+ const absent=Object.values(attendanceMap).filter(s=>s==='absent').length;
+ const total=allStudents.length;
+ document.getElementById('att-chips').innerHTML=`
+ <div class="att-chip t"> ${total} Students</div>
+ <div class="att-chip p"> ${present} Present</div>
+ <div class="att-chip a"> ${absent} Absent</div>
+ ${total-present-absent>0?`<div class="att-chip" style="background:#f3f4f6;color:var(--text-2);">${total-present-absent} Unmarked</div>`:''}`;
+}
+
+async function saveAttendance() {
+ const date=document.getElementById('att-date').value;
+ if(!date){toast('Please select a date','e');return;}
+ const records=Object.entries(attendanceMap).map(([student_id,status])=>({student_id:parseInt(student_id),status}));
+ if(!records.length){toast('Please mark at least one student','e');return;}
+ await api('/attendance/bulk',{method:'POST',body:JSON.stringify({date,attendance:records})});
+ toast(`Attendance saved for ${records.length} students!`,'s');
+}
+
+// ── GRADES ──
+async function loadGrades() {
+ const sid=document.getElementById('grades-stu-sel').value;
+ if(!sid) return;
+ const grades=await api(`/grades?student_id=${sid}`);
+ const tbody=document.getElementById('grades-tbody');
+ if(!grades||!grades.length){tbody.innerHTML='<tr><td colspan="6" class="loading">No grades yet</td></tr>';return;}
+ tbody.innerHTML=grades.map(g=>`
+ <tr>
+ <td>${g.full_name}</td>
+ <td>${g.subject||'—'}</td>
+ <td>${g.score!=null?`<strong>${g.score}%</strong>`:'—'}</td>
+ <td><span class="badge badge-${gradeColor(g.grade)}">${g.grade||'—'}</span></td>
+ <td>${g.term||'—'}</td>
+ <td>${g.notes||'—'}</td>
+ </tr>`).join('');
+}
+
+async function addGrade() {
+ const body={
+ student_id:parseInt(document.getElementById('mg-stu').value),
+ subject:document.getElementById('mg-sub').value,
+ score:parseFloat(document.getElementById('mg-score').value)||null,
+ grade:document.getElementById('mg-grade').value,
+ term:document.getElementById('mg-term').value,
+ academic_year:document.getElementById('mg-year').value,
+ notes:document.getElementById('mg-notes').value,
+ };
+ if(!body.student_id||!body.subject){toast('Select student and enter subject','e');return;}
+ await api('/grades',{method:'POST',body:JSON.stringify(body)});
+ closeModal('m-add-grade'); loadGrades(); toast('Grade saved!','s');
+}
+
+// ── TEACHERS ──
+async function loadTeachers() {
+ const data = await api('/teachers');
+ if (!data) return;
+ const withClasses = await Promise.all(data.map(async t => {
+ const classes = await api(`/teachers/${t.id}/classes`);
+ return { ...t, classes: (classes||[]).map(c=>c.class_name) };
+ }));
+ allTeachers = withClasses;
+ renderTeachers(allTeachers);
+}
+
+function renderTeachers(list) {
+ const tbody = document.getElementById('teachers-tbody');
+ if (!list||!list.length) { tbody.innerHTML='<tr><td colspan="5" class="loading">No teachers found</td></tr>'; return; }
+
+ const missing = list.filter(t =>t.role==='teacher' && (!t.classes||!t.classes.length) && !t.class);
+ const alert = document.getElementById('teacher-no-class-alert');
+ if (alert) alert.style.display = missing.length ? 'flex' : 'none';
+
+ tbody.innerHTML = list.map(t => {
+ const classes = t.classes?.length ? t.classes : (t.class ? [t.class] : []);
+ const classTags = classes.length
+ ? classes.map(c=>`
+ <span style="display:inline-flex;align-items:center;gap:3px;background:var(--primary-light);
+ color:var(--primary);padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;margin:2px;">
+ ${c}
+ <button onclick="removeTeacherClass(${t.id},'${esc(c)}')"
+ style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:13px;line-height:1;"></button>
+ </span>`).join('')
+ : `<span style="color:var(--danger);font-weight:700;font-size:12px;">Not set</span>`;
+ return `<tr>
+ <td><strong>${t.full_name}</strong></td>
+ <td style="color:var(--text-2);font-size:12px;">${t.email}</td>
+ <td>
+ <div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center;">
+ ${classTags}
+ <button onclick="addClassModal(${t.id},'${esc(t.full_name)}')"
+ style="background:var(--success-light);color:var(--success);border:none;border-radius:6px;
+ padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;margin:2px;">+ Add</button>
+ </div>
+ </td>
+ <td><span class="badge ${['admin','principal'].includes(t.role)?'badge-blue':'badge-gray'}">${t.role}</span></td>
+ <td><button class="btn btn-danger btn-sm" onclick="deleteTeacher(${t.id},'${esc(t.full_name)}')">Remove</button></td>
+ </tr>`;
+ }).join('');
+}
+
+function filterTeachers() {
+ const q = document.getElementById('tch-search').value.toLowerCase();
+ renderTeachers(allTeachers.filter(t =>t.full_name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q) ||
+ (t.classes||[]).join(' ').toLowerCase().includes(q)
+ ));
+}
+
+let addClassTeacherId = null;
+function addClassModal(teacherId, teacherName) {
+ addClassTeacherId = teacherId;
+ document.getElementById('add-class-modal-title').textContent = `Add Class — ${teacherName}`;
+ document.getElementById('add-class-grade').value = '';
+ document.getElementById('add-class-stream').value = '';
+ document.getElementById('add-class-num').value = '1';
+ document.getElementById('add-class-preview').value = '';
+ document.getElementById('add-class-stream-num').style.display = 'none';
+ openModal('m-add-teacher-class');
+}
+
+function updateAddClassPreview() {
+ const g = document.getElementById('add-class-grade').value;
+ const s = document.getElementById('add-class-stream').value;
+ const n = document.getElementById('add-class-num').value;
+ document.getElementById('add-class-stream-num').style.display = s ? 'block' : 'none';
+ let cls = g ? `Grade ${g}` : '';
+ if (s) cls += ` ${s} ${n}`;
+ document.getElementById('add-class-preview').value = cls;
+}
+
+async function saveTeacherClass() {
+ const cls = document.getElementById('add-class-preview').value.trim();
+ if (!cls) { toast('Please select a grade first', 'e'); return; }
+ const r = await api(`/teachers/${addClassTeacherId}/classes`, {
+ method: 'POST', body: JSON.stringify({ class_name: cls })
+ });
+ if (r?.error) { toast(r.error, 'e'); return; }
+ closeModal('m-add-teacher-class');
+ await loadTeachers();
+ toast(`Class "${cls}" added!`, 's');
+}
+
+async function removeTeacherClass(teacherId, className) {
+ if (!confirm(`Remove "${className}" from this teacher?`)) return;
+ await api(`/teachers/${teacherId}/classes/${encodeURIComponent(className)}`, { method: 'DELETE' });
+ await loadTeachers();
+ toast('Class removed', 's');
+}
+
+async function addTeacher() {
+ const body={
+ full_name:document.getElementById('mt-name').value.trim(),
+ email:document.getElementById('mt-email').value.trim(),
+ password:document.getElementById('mt-pass').value,
+ class:document.getElementById('mt-class').value.trim(),
+ role:document.getElementById('mt-role').value,
+ };
+ if(!body.full_name||!body.email||!body.password){toast('Fill all required fields','e');return;}
+ const r=await api('/teachers',{method:'POST',body:JSON.stringify(body)});
+ if(r?.error){toast(r.error,'e');return;}
+ closeModal('m-add-teacher');
+ ['mt-name','mt-email','mt-pass','mt-class'].forEach(id=>document.getElementById(id).value='');
+ await loadTeachers(); await loadDashboard();
+ toast('Teacher added!','s');
+}
+
+async function deleteTeacher(id,name) {
+ if(!confirm(`Remove ${name}? This cannot be undone.`)) return;
+ await api(`/teachers/${id}`,{method:'DELETE'});
+ await loadTeachers(); await loadDashboard();
+ toast(`${name} removed.`,'s');
+}
+
+// ── FEES ──
+async function loadFees() {
+ let url='/fees';
+ const sf=document.getElementById('fees-status-filter')?.value;
+ if(sf) url+=`?status=${sf}`;
+ const data=await api(url);
+ const tbody=document.getElementById('fees-tbody');
+ if(!data||!data.length){tbody.innerHTML='<tr><td colspan="6" class="loading">No fee records</td></tr>';document.getElementById('fees-summary').textContent='';return;}
+ const smap={};allStudents.forEach(s=>smap[s.id]=s.full_name);
+ let due=0,paid=0;
+ data.forEach(f=>{due+=parseFloat(f.amount_due||0);paid+=parseFloat(f.amount_paid||0);});
+ document.getElementById('fees-summary').textContent=`D${due.toLocaleString()} due · D${paid.toLocaleString()} paid`;
+ tbody.innerHTML=data.map(f=>`
+ <tr>
+ <td><strong>${smap[f.student_id]||'#'+f.student_id}</strong></td>
+ <td>${f.term||'—'}</td>
+ <td>D${parseFloat(f.amount_due).toLocaleString()}</td>
+ <td>D${parseFloat(f.amount_paid||0).toLocaleString()}</td>
+ <td><span class="badge ${f.status==='paid'?'badge-green':f.status==='partial'?'badge-yellow':'badge-red'}">${f.status}</span></td>
+ <td>${f.due_date?new Date(f.due_date).toLocaleDateString('en-GB'):'—'}</td>
+ </tr>`).join('');
+}
+
+async function addFee() {
+ const body={
+ student_id:parseInt(document.getElementById('mf-stu').value),
+ term:document.getElementById('mf-term').value,
+ academic_year:document.getElementById('mf-year').value,
+ amount_due:parseFloat(document.getElementById('mf-amount').value),
+ due_date:document.getElementById('mf-due').value||null,
+ };
+ if(!body.student_id||!body.term||!body.amount_due){toast('Fill required fields','e');return;}
+ await api('/fees',{method:'POST',body:JSON.stringify(body)});
+ closeModal('m-add-fee'); loadFees(); toast('Fee record added!','s');
+}
+
+// ── PORTAL ACCOUNTS ──
+async function loadAccounts() {
+ const [data, studs] = await Promise.all([api('/student-accounts'), api('/students')]);
+ if(studs) allStudents = studs;
+ const tbody=document.getElementById('accounts-tbody');
+ if(!data||!data.length){tbody.innerHTML='<tr><td colspan="7" class="loading">No portal accounts yet.</td></tr>';return;}
+
+ const unlinked = data.filter(a=>!a.linked_student).length;
+ const banner = document.getElementById('accounts-unlinked-banner');
+ if(banner) banner.style.display = unlinked ? 'flex' : 'none';
+
+ tbody.innerHTML=data.map(a=>`
+ <tr>
+ <td><strong>${a.full_name}</strong></td>
+ <td style="font-size:12px;color:var(--text-2);">${a.email}</td>
+ <td><span class="badge ${a.role==='student'?'badge-blue':'badge-purple'}">${a.role}</span></td>
+ <td>${a.grade||'—'}</td>
+ <td>${a.class||'—'}</td>
+ <td>
+ ${a.linked_student
+ ? `<span class="badge badge-green"> ${a.linked_student}</span>`
+ : `<button class="btn btn-warning btn-sm" onclick="openLinkModal(${a.id},'${esc(a.full_name)}','${a.role}')">Link</button>`
+ }
+ </td>
+ <td><button class="btn btn-danger btn-sm" onclick="deleteAccount(${a.id},'${esc(a.full_name)}')">Remove</button></td>
+ </tr>`).join('');
+}
+
+let linkingAccountId = null;
+function openLinkModal(accountId, accountName, role) {
+ linkingAccountId = accountId;
+ document.getElementById('link-modal-title').textContent = `Link "${accountName}" to a student`;
+ document.getElementById('link-modal-hint').textContent =
+ role === 'parent'
+ ? 'Select the student who is this parent\'s child.'
+ : 'Select the student record that matches this account.';
+ const sel = document.getElementById('link-student-sel');
+ sel.innerHTML = '<option value="">Select student…</option>' +
+ allStudents.map(s=>`<option value="${s.id}">${s.full_name} (${s.class||'—'})</option>`).join('');
+ openModal('m-link-account');
+}
+
+async function linkAccount() {
+ const sid = document.getElementById('link-student-sel').value;
+ if(!sid){toast('Please select a student','e');return;}
+ const r = await api(`/student-accounts/${linkingAccountId}`,{
+ method:'PATCH', body:JSON.stringify({student_id:parseInt(sid)})
+ });
+ if(r?.error){toast(r.error,'e');return;}
+ closeModal('m-link-account');
+ await loadAccounts();
+ toast('Account linked successfully!','s');
+}
+
+async function deleteAccount(id,name) {
+ if(!confirm(`Remove account for ${name}?`)) return;
+ await api(`/student-accounts/${id}`,{method:'DELETE'});
+ loadAccounts(); toast(`${name}'s account removed.`,'s');
+}
+
+// ── ANNOUNCEMENTS ──
+async function loadAnnouncements() {
+ const data=await api('/announcements');
+ const el=document.getElementById('anns-list');
+ if(!data||!data.length){el.innerHTML='<div class="loading">No announcements yet</div>';return;}
+ el.innerHTML=data.map(a=>`
+ <div class="ann-card">
+ <div class="ann-hdr">
+ <div class="ann-title">${a.title||'Announcement'}</div>
+ <div class="ann-date">${new Date(a.created_at).toLocaleDateString('en-GB')}</div>
+ </div>
+ <div class="ann-body">${a.message}</div>
+ </div>`).join('');
+}
+
+async function postAnnouncement() {
+ const title=document.getElementById('ann-title').value.trim();
+ const message=document.getElementById('ann-msg').value.trim();
+ if(!message){toast('Please enter a message','e');return;}
+ await api('/announcements',{method:'POST',body:JSON.stringify({title,message,target:'all'})});
+ document.getElementById('ann-title').value='';
+ document.getElementById('ann-msg').value='';
+ toast('Announcement sent!','s'); loadAnnouncements();
+}
+
+// ── AUDIT LOG ──
+function auditActionBadge(action) {
+ const map = {
+ create: 'badge-green', update: 'badge-blue', delete: 'badge-red',
+ send: 'badge-purple', view: 'badge-gray', login: 'badge-yellow'
+ };
+ const cls = map[action] || 'badge-gray';
+ const label = action ? action.charAt(0).toUpperCase()+action.slice(1) : '—';
+ return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function auditEntityLabel(entity) {
+ const map = {
+ grade:'Grade', attendance:'Attendance', announcement:'Announcement',
+ student:'Student', teacher:'Teacher', fee:'Fee',
+ student_account:'Portal Account', teacher_class:'Teacher Class',
+ report_card:'Report Card'
+ };
+ return map[entity] || entity || '—';
+}
+
+async function loadAuditLogs() {
+ const entity = document.getElementById('audit-entity-filter')?.value;
+ const action = document.getElementById('audit-action-filter')?.value;
+ let url = '/audit-logs?limit=100';
+ if (entity) url += `&entity=${encodeURIComponent(entity)}`;
+ if (action) url += `&action=${encodeURIComponent(action)}`;
+
+ const data = await api(url);
+ const tbody = document.getElementById('audit-tbody');
+ const cards = document.getElementById('audit-cards');
+
+ if (!data || !data.length) {
+ const empty = `<div class="empty"><h3>No activity yet</h3><p>Changes to grades, attendance, fees, and announcements will show up here</p></div>`;
+ if (tbody) tbody.innerHTML = `<tr><td colspan="5">${empty}</td></tr>`;
+ if (cards) cards.innerHTML = empty;
+ return;
+ }
+
+ if (tbody) tbody.innerHTML = data.map(a => `
+ <tr>
+ <td style="white-space:nowrap;font-size:12px;color:var(--text-2);">${new Date(a.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+ <td><strong>${a.actor_name || 'System'}</strong><br><span style="font-size:11px;color:var(--text-2);">${a.actor_role || ''}</span></td>
+ <td>${auditActionBadge(a.action)}</td>
+ <td><span class="badge badge-gray">${auditEntityLabel(a.entity)}</span>${a.entity_id ? ` #${a.entity_id}` : ''}</td>
+ <td style="font-size:12px;color:var(--text-2);">${a.description || '—'}</td>
+ </tr>`).join('');
+
+ if (cards) cards.innerHTML = data.map(a => `
+ <div class="m-card">
+ <div class="m-card-row">
+ <span style="font-size:13px;font-weight:700;">${a.actor_name || 'System'}</span>
+ ${auditActionBadge(a.action)}
+ </div>
+ <div class="m-card-row">
+ <span class="m-card-label">Record</span>
+ <span class="m-card-val">${auditEntityLabel(a.entity)}${a.entity_id ? ' #'+a.entity_id : ''}</span>
+ </div>
+ <div class="m-card-row">
+ <span class="m-card-label">When</span>
+ <span class="m-card-val">${new Date(a.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+ </div>
+ <div style="font-size:12px;color:var(--text-2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">${a.description || '—'}</div>
+ </div>`).join('');
+}
+
+// ── STUDENT PORTAL ──
+async function loadStudentPortal() {
+ const sid=currentUser.student_id;
+
+ if(!sid) {
+ document.getElementById('sp-grades-wrap').innerHTML=`
+ <div class="info-banner warn" style="margin:0;">
+ <span>Your account is not yet linked to a student record. Please contact your school admin.</span>
+ </div>`;
+ return;
+ }
+
+ const [grades,attList,anns]=await Promise.all([
+ api(`/grades?student_id=${sid}`),
+ api(`/attendance?student_id=${sid}`),
+ api('/announcements')
+ ]);
+
+ if(grades&&grades.length) {
+ const scores=grades.filter(g=>g.score!=null).map(g=>parseFloat(g.score));
+ const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):null;
+ const best=grades.reduce((b,g)=>(!b||parseFloat(g.score)>parseFloat(b.score))?g:b,null);
+ document.getElementById('sp-avg').textContent=avg!=null?`${avg}%`:'—';
+ document.getElementById('sp-subs').textContent=grades.length;
+ if(best){document.getElementById('sp-best').textContent=best.grade||`${best.score}%`;document.getElementById('sp-best-sub').textContent=best.subject||'Best';}
+ document.getElementById('sp-grades-wrap').innerHTML=grades.map(g=>`
+ <div class="result-subject-card">
+ <div>
+ <div style="font-weight:700;font-size:14px;">${g.subject}</div>
+ <div style="font-size:12px;color:var(--text-2);margin-top:2px;">${g.term||'—'} · ${g.academic_year||'—'}</div>
+ ${g.notes?`<div style="font-size:11px;color:var(--text-2);margin-top:4px;"> ${g.notes}</div>`:''}
+ </div>
+ <div style="display:flex;align-items:center;gap:10px;">
+ ${g.score!=null?`<span style="font-size:16px;font-weight:800;">${g.score}%</span>`:''}
+ <div class="grade-circle gc-${(g.grade||'X').charAt(0)}">${g.grade||'—'}</div>
+ </div>
+ </div>`).join('');
+ } else {
+ document.getElementById('sp-grades-wrap').innerHTML='<div style="text-align:center;padding:20px;color:var(--text-2);font-size:13px;">No grades yet</div>';
+ }
+
+ if(attList&&attList.length) {
+ const present=attList.filter(a=>a.status==='present').length;
+ const total=attList.length;
+ const pct=Math.round(present/total*100);
+ document.getElementById('sp-att').textContent=`${pct}%`;
+ document.getElementById('sp-att-sub').textContent=`${present} of ${total} days`;
+ document.getElementById('sp-att-tbody').innerHTML=attList.slice(0,30).map(a=>`
+ <tr>
+ <td>${new Date(a.date).toLocaleDateString('en-GB')}</td>
+ <td><span class="badge ${a.status==='present'?'badge-green':'badge-red'}">${a.status}</span></td>
+ </tr>`).join('');
+ } else {
+ document.getElementById('sp-att-tbody').innerHTML='<tr><td colspan="2" class="loading">No records</td></tr>';
+ }
+
+ const ac=document.getElementById('sp-anns');
+ if(anns&&anns.length) ac.innerHTML=anns.slice(0,5).map(a=>`
+ <div class="ann-card" style="margin-bottom:10px;">
+ <div class="ann-hdr"><div class="ann-title">${a.title||'Announcement'}</div><div class="ann-date">${new Date(a.created_at).toLocaleDateString('en-GB')}</div></div>
+ <div class="ann-body">${a.message}</div>
+ </div>`).join('');
+ else ac.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-2);font-size:13px;">No announcements</div>';
+}
+
+// ── PARENT PORTAL ──
+async function loadParentPortal() {
+ const linkedRes = await api('/students');
+ const anns = await api('/announcements');
+
+ if(linkedRes&&linkedRes.length) {
+ populateChildSelector(linkedRes);
+ document.getElementById('par-lookup').style.display='none';
+ document.getElementById('par-child-wrap').style.display='block';
+ if(linkedRes.length===1){
+ document.getElementById('par-child-sel').value=linkedRes[0].id;
+ loadChildData();
+ }
+ }
+
+ const ac=document.getElementById('pp-anns');
+ if(anns&&anns.length) ac.innerHTML=anns.slice(0,5).map(a=>`
+ <div class="ann-card" style="margin-bottom:10px;">
+ <div class="ann-hdr"><div class="ann-title">${a.title||'Announcement'}</div><div class="ann-date">${new Date(a.created_at).toLocaleDateString('en-GB')}</div></div>
+ <div class="ann-body">${a.message}</div>
+ </div>`).join('');
+ else ac.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-2);font-size:13px;">No announcements</div>';
+}
+
+async function searchByPhone() {
+ const phone=document.getElementById('par-phone-in').value.trim();
+ const errEl=document.getElementById('par-phone-err');
+ errEl.style.display='none';
+ if(!phone){errEl.textContent='Enter your phone number.';errEl.style.display='block';return;}
+
+ const all=await api('/students');
+ if(!all){errEl.textContent='Connection failed.';errEl.style.display='block';return;}
+
+ const matched=all.filter(s=>s.parent_phone&&s.parent_phone.replace(/\s/g,'').includes(phone.replace(/\s/g,'')));
+ if(!matched.length){
+ errEl.textContent=`No children found with phone "${phone}". Check it matches your school registration.`;
+ errEl.style.display='block'; return;
+ }
+ populateChildSelector(matched);
+ document.getElementById('par-lookup').style.display='none';
+ document.getElementById('par-child-wrap').style.display='block';
+ if(matched.length===1){document.getElementById('par-child-sel').value=matched[0].id;loadChildData();}
+ toast(`Found ${matched.length} child${matched.length>1?'ren':''}!`,'s');
+}
+
+function populateChildSelector(children) {
+ const sel=document.getElementById('par-child-sel');
+ sel.innerHTML='<option value="">Select your child…</option>'+
+ children.map(s=>`<option value="${s.id}">${s.full_name} (${s.class||'—'})</option>`).join('');
+}
+
+async function loadChildData() {
+ const cid=document.getElementById('par-child-sel').value;
+ if(!cid) return;
+ document.getElementById('par-content').style.display='block';
+
+ const [grades,attList,fees]=await Promise.all([
+ api(`/grades?student_id=${cid}`),
+ api(`/attendance?student_id=${cid}`),
+ api(`/fees?student_id=${cid}`)
+ ]);
+
+ if(grades&&grades.length){
+ const scores=grades.filter(g=>g.score!=null).map(g=>parseFloat(g.score));
+ const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):null;
+ const best=grades.reduce((b,g)=>(!b||parseFloat(g.score)>parseFloat(b.score))?g:b,null);
+ document.getElementById('pp-avg').textContent=avg!=null?`${avg}%`:'—';
+ if(best){document.getElementById('pp-best').textContent=best.subject||'—';document.getElementById('pp-best-sub').textContent=best.grade||'—';}
+ document.getElementById('pp-grades').innerHTML=grades.map(g=>`
+ <tr>
+ <td><strong>${g.subject}</strong></td>
+ <td>${g.score!=null?g.score+'%':'—'}</td>
+ <td><span class="badge badge-${gradeColor(g.grade)}">${g.grade||'—'}</span></td>
+ <td>${g.term||'—'}</td>
+ </tr>`).join('');
+ } else {
+ document.getElementById('pp-grades').innerHTML='<tr><td colspan="4" class="loading">No grades yet</td></tr>';
+ }
+
+ if(attList&&attList.length){
+ const present=attList.filter(a=>a.status==='present').length;
+ const pct=Math.round(present/attList.length*100);
+ document.getElementById('pp-att').textContent=`${pct}%`;
+ document.getElementById('pp-att-sub').textContent=`${present} of ${attList.length} days`;
+ document.getElementById('pp-att-tbody').innerHTML=attList.slice(0,30).map(a=>`
+ <tr>
+ <td>${new Date(a.date).toLocaleDateString('en-GB')}</td>
+ <td><span class="badge ${a.status==='present'?'badge-green':'badge-red'}">${a.status}</span></td>
+ </tr>`).join('');
+ } else {
+ document.getElementById('pp-att-tbody').innerHTML='<tr><td colspan="2" class="loading">No records</td></tr>';
+ }
+
+ if(fees&&fees.length){
+ const lf=fees[0];
+ document.getElementById('pp-fee').textContent=lf.status.toUpperCase();
+ document.getElementById('pp-fee').style.color=lf.status==='paid'?'var(--success)':lf.status==='partial'?'var(--warning)':'var(--danger)';
+ document.getElementById('pp-fee-sub').textContent=lf.term||'—';
+ } else {
+ document.getElementById('pp-fee').textContent='N/A';
+ document.getElementById('pp-fee-sub').textContent='No records';
+ }
+}
+
+// ── NOTES ──
+async function viewNotes(sid,name) {
+ const notes=await api(`/notes?student_id=${sid}`);
+ const text=notes?.length?notes.map(n=>`• ${n.note} (${new Date(n.created_at).toLocaleDateString()})`).join('\n'):'No notes yet';
+ const n=prompt(`Notes for ${name}:\n\n${text}\n\nAdd a note (or cancel):`);
+ if(n){await api('/notes',{method:'POST',body:JSON.stringify({student_id:sid,note:n})});toast('Note saved!','s');}
+}
+
+// ── REPORT CARD ──
+// The report-card endpoint requires the Authorization header, so a plain <a href>
+// won't work — fetch it as HTML and open it in a new tab via a Blob URL instead.
+async function openReportCard(sid, name) {
+ toast(`Generating report card for ${name}…`);
+ try {
+ const res = await fetch(`${API}/report-card/${sid}`, {
+ headers: { 'Authorization': `Bearer ${token}` }
+ });
+ if (!res.ok) { toast('Could not generate report card','e'); return; }
+ const html = await res.text();
+ const blob = new Blob([html], { type: 'text/html' });
+ const url = URL.createObjectURL(blob);
+ const win = window.open(url, '_blank');
+ if (!win) toast('Please allow pop-ups to view the report card','e');
+ } catch(e) {
+ toast('Connection failed while generating report card','e');
+ }
+}
+
+// ── MODALS ──
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ── HELPERS ──
+function showErr(el,msg){el.textContent=msg;el.style.display='block';setTimeout(()=>el.style.display='none',5000);}
+
+function toast(msg,type='') {
+ const wrap=document.getElementById('toasts');
+ const el=document.createElement('div');
+ el.className=`toast ${type}`;
+ el.innerHTML=`${msg}`;
+ wrap.appendChild(el);
+ setTimeout(()=>el.remove(),3500);
+}
+
+function gradeColor(g) {
+ if(!g) return 'gray';
+ const c=g.charAt(0);
+ if(c==='A') return 'green';
+ if(c==='B') return 'blue';
+ if(c==='C') return 'yellow';
+ return 'red';
+}
+
+function esc(s){return (s||'').replace(/'/g,"\\'");}
+</script>
+</body>
+</html>
